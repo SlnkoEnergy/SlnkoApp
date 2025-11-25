@@ -144,4 +144,167 @@ export const GlobalStyleSheet = StyleSheet.create({
         resizeMode: 'contain',
         opacity: .8,
     },
+    containers: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logo: {
+    width: 500,
+    height: 250,
+    // marginBottom: 2,
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    color: "#000",
+  },
+  loginButton: {
+    backgroundColor: "#003366",
+    width: "100%",
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: "center",
+    marginBottom: 16,
+    
+    
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loaderContainer: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "#fff",
+},
+  gradientBg: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#eef6ff",
+  },
+
+  glassInput: {
+    width: "100%",
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    backgroundColor: "rgba(255,255,255,0.55)",
+    borderRadius: 14,
+    color: "#003366",
+    fontWeight: "500",
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.8)",
+    shadowColor: "#003366",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+  },
+
+
+
+  forgotText: {
+    color: "#003366",
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 18,
+    textDecorationLine: "underline",
+  },
+
+  footer: {
+    alignItems: "center",
+    marginTop: "70%",
+  },
+
+  poweredBy: {
+    color: "#6c7a96",
+    fontSize: 14,
+  },
+
+  footerLogo: {
+    width: 120,
+    height: 50,
+    marginTop: 3,
+  },
+
+  dialog: {
+    backgroundColor: "#e8f1ff",
+  },
+
+  dialogTitle: {
+    color: "#003366",
+    fontWeight: "bold",
+  },
+    inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.35)",
+    borderRadius: 30,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    height: 55,
+
+    // Glass effect
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+  },
+
+  leftIcon: {
+    marginRight: 10,
+  },
+
+  textInput: {
+    flex: 1,
+    color: "#003366",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+
+  roundInputContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1.5,
+  borderColor: "#003366",
+  borderRadius: 30,
+  paddingHorizontal: 18,
+  height: 55,
+  width: "100%",
+  backgroundColor: "#fff",
+
+  marginBottom: 20,
+},
+
+roundInput: {
+  flex: 1,
+  fontSize: 15,
+  color: "#003366",
+  paddingHorizontal: 10,
+  fontWeight: "500",
+},
+
+eyeButton: {
+  padding: 4,
+},
+
 });

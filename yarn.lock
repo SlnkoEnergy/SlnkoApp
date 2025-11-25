@@ -5839,6 +5839,11 @@ react-native-collapsible@^1.6.2:
   resolved "https://registry.yarnpkg.com/react-native-collapsible/-/react-native-collapsible-1.6.2.tgz#3b67fa402a6ba3c291022f5db8f345083862c3d8"
   integrity sha512-MCOBVJWqHNjnDaGkvxX997VONmJeebh6wyJxnHEgg0L1PrlcXU1e/bo6eK+CDVFuMrCafw8Qh4DOv/C4V/+Iew==
 
+react-native-config@^1.6.0:
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/react-native-config/-/react-native-config-1.6.0.tgz#dd830c8ada35eb17ad1371569515836d34230bd7"
+  integrity sha512-UtiKWiLlSNgWf/9CPMkM1UoOHtnc7p9YyvUb9DozgQ41xcRhImGfh6nAtW9HhWhfsvMgTdq7l+xSMn9JPW0SLQ==
+
 react-native-country-codes-picker@^2.3.5:
   version "2.3.5"
   resolved "https://registry.yarnpkg.com/react-native-country-codes-picker/-/react-native-country-codes-picker-2.3.5.tgz#159cbbcee14716533cdaa9997d457ab1a943038c"

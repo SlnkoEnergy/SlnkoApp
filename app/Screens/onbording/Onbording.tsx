@@ -75,7 +75,7 @@ const Onbording = ({ navigation } : OnbordingScreenProps) => {
                     <View
                         style={{
                             flex: 1,
-                            backgroundColor: 'rgba(38, 72, 231, 0.8)', // Light overlay
+                            backgroundColor: 'rgba(51, 102, 153, 0.8)', // Light overlay
                             position:'absolute',
                             left:0,
                             right:0,
@@ -338,7 +338,7 @@ const Onbording = ({ navigation } : OnbordingScreenProps) => {
                 >
                     <Button
                         title='Get Started'
-                        onPress={() => navigation.navigate('ChooseLanguage')}
+                        onPress={() => navigation.navigate('Login')}
                     />
                 </View>
             </ImageBackground>

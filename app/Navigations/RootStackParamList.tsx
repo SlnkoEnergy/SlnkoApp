@@ -7,6 +7,7 @@ export type RootStackParamList = {
     splash: undefined;
     Onbording: undefined;
     ChooseLanguage:undefined;
+    MainSignIn:undefined;
     SignIn: undefined;
     EnterCode: undefined;
     NewPassword: undefined;
