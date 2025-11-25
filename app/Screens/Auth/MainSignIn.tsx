@@ -53,65 +53,75 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   };
   const hideDialog = () => setDialogVisible(false);
 
-  const handleLogin = async () => {
-    const user = name.trim();
-    const pass = password.trim();
+ const handleLogin = async () => {
+  const user = name.trim();
+  const pass = password.trim();
 
-    if (!user || !pass) {
-      showDialog("Missing Fields", "Please enter both username and password.");
+  if (!user || !pass) {
+    showDialog("Missing Fields", "Please enter both username and password.");
+    return;
+  }
+  if (isLoading) return;
+
+  try {
+    Keyboard.dismiss();
+
+    const loginResponse = await login({ name: user, password: pass }).unwrap();
+    const { token, userId } = loginResponse ?? {};
+
+    if (!token || !userId) {
+      showDialog("Error", "Token or userId not received from server.");
       return;
     }
-    if (isLoading) return;
 
-    try {
-      Keyboard.dismiss();
+    await AsyncStorage.setItem("authToken", token);
 
-      const loginResponse = await login({ name: user, password: pass }).unwrap();
-      const { token, userId } = loginResponse ?? {};
+    const users = await dispatch(
+      loginSlice.endpoints.getAllUsersIt.initiate()
+    ).unwrap();
+    const matchedUser = users.find(
+      (item: any) => String(item._id) === String(userId)
+    );
 
-      if (!token || !userId) {
-        showDialog("Error", "Token or userId not received from server.");
-        return;
-      }
-
-      await AsyncStorage.setItem("authToken", token);
-
-      const users = await dispatch(loginSlice.endpoints.getAllUsersIt.initiate()).unwrap();
-      const matchedUser = users.find((item: any) => String(item._id) === String(userId));
-
-      if (!matchedUser) {
-        showDialog("Error", "User not found in user list.");
-        return;
-      }
-
-      await AsyncStorage.setItem(
-        "userData",
-        JSON.stringify({
-          name: matchedUser.name,
-          email: matchedUser.email,
-          phone: matchedUser.phone,
-          emp_id: matchedUser.emp_id,
-          role: matchedUser.role,
-          createdAt: matchedUser.createdAt,
-          userID: matchedUser._id,
-        })
-      );
-
-      setPassword("");
-
-      
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "ProjectDetails" as any }],
-      });
-    } catch (err: any) {
-      const msg =
-        err?.status === 401 || err?.originalStatus === 401
-          ? "Incorrect username or password."
-          : "Unable to sign in. Check your connection and try again.";
-      showDialog("Login Failed", msg);
+    if (!matchedUser) {
+      showDialog("Error", "User not found in user list.");
+      return;
     }
-  };
+
+    await AsyncStorage.setItem(
+      "userData",
+      JSON.stringify({
+        name: matchedUser.name,
+        email: matchedUser.email,
+        phone: matchedUser.phone,
+        emp_id: matchedUser.emp_id,
+        role: matchedUser.role,
+        createdAt: matchedUser.createdAt,
+        userID: matchedUser._id,
+      })
+    );
+
+    setPassword("");
+
+
+    // navigation.navigate("DrawerNavigation" as any, { screen: "Home" } as any);
+
+    navigation.reset({
+  index: 0,
+  routes: [{ name: 'DrawerNavigation' }],
+});
+
+
+
+  } catch (err: any) {
+    const msg =
+      err?.status === 401 || err?.originalStatus === 401
+        ? "Incorrect username or password."
+        : "Unable to sign in. Check your connection and try again.";
+    showDialog("Login Failed", msg);
+  }
+};
+
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>

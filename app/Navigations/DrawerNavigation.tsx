@@ -8,31 +8,32 @@ import Sidebar from '../layout/Sidebar';
 
 const Drawer = createDrawerNavigator();
 
+
 const DrawerNavigation = () => {
+  const { colors }: { colors: any } = useTheme();
 
-    const { colors }: {colors : any} = useTheme();
-
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
-            <Drawer.Navigator
-                initialRouteName='BottomNavigation'
-                screenOptions={{
-                    headerShown: false,
-                    drawerStyle:{
-                        backgroundColor: colors.card,
-                        borderTopRightRadius:20,
-                        borderBottomRightRadius:20
-                    },
-                }}
-                drawerContent={(props) => {
-                    return <Sidebar navigation={props.navigation} />
-                }}
-            >
-                <Drawer.Screen name='BottomNavigation' component={BottomNavigation} />
-            </Drawer.Navigator>
-        </SafeAreaView>
-    );
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
+      <Drawer.Navigator
+        initialRouteName='BottomNavigation'
+        screenOptions={{
+          headerShown: false,
+          drawerStyle: {
+            backgroundColor: colors.card,
+            borderTopRightRadius: 20,
+            borderBottomRightRadius: 20,
+          },
+        }}
+        drawerContent={(props) => {
+          return <Sidebar navigation={props.navigation} />;
+        }}
+      >
+        <Drawer.Screen name='BottomNavigation' component={BottomNavigation} />
+      </Drawer.Navigator>
+    </SafeAreaView>
+  );
 };
+
 
 
 export default DrawerNavigation;

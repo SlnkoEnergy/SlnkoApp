@@ -2,7 +2,8 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 import { BottomTabParamList } from "./BottomTabParamList";
 
 export type RootStackParamList = {
-    DrawerNavigation: NavigatorScreenParams<BottomTabParamList>;
+    // DrawerNavigation: NavigatorScreenParams<BottomTabParamList>;
+      DrawerNavigation: undefined;
     demo: undefined;
     splash: undefined;
     Onbording: undefined;
