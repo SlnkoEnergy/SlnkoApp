@@ -1,767 +1,1171 @@
-import { View, Text, SafeAreaView, ImageBackground, ScrollView, StyleSheet, Animated, TextInput, FlatList } from 'react-native'
-import React, { useRef, useState } from 'react'
-import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList } from '../../Navigations/RootStackParamList';
-import { useTheme } from '@react-navigation/native';
-import { StatusBar } from 'react-native';
-import { GlobalStyleSheet } from '../../constants/StyleSheet';
-import { TouchableOpacity } from 'react-native';
-import { Image } from 'react-native';
-import { IMAGES } from '../../constants/Images';
-import { COLORS, FONTS } from '../../constants/theme';
-import DropShadow from 'react-native-drop-shadow';
-import FeatherIcon from "react-native-vector-icons/Feather";
-import Ionicons from "react-native-vector-icons/Ionicons";
-import { Platform } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import ProgressBar from '../../components/ProgressBar';
-import Progresscircle from '../../components/Progresscircle';
+import React, { useState } from "react";
+import {
+  View,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  TextInput,
+} from "react-native";
+import { StackScreenProps } from "@react-navigation/stack";
+import { RootStackParamList } from "../../Navigations/RootStackParamList";
+import Icon from "react-native-vector-icons/Feather";
 
+import { COLORS } from "../../constants/theme";
 
-const ProjectCards = [
+import SubHeader from "../../layout/SubHeader"
+// If you later want a custom header, you can import it here and render above the tabs
+// import Header from "../../layout/Header";
+
+type ProjectScreenProps = StackScreenProps<RootStackParamList, "Project">;
+
+/* --------- STATUS LABELS --------- */
+
+const statusLabelMap = {
+  todo: "TO DO",
+  "in-progress": "IN PROGRESS",
+  complete: "COMPLETE",
+} as const;
+
+type StatusKey = keyof typeof statusLabelMap;
+
+/* --- Single status row used inside Modal --- */
+type StatusRowProps = {
+  label: string;
+  variant: StatusKey;
+  selected: boolean;
+  onPress: () => void;
+};
+
+const StatusRow: React.FC<StatusRowProps> = ({
+  label,
+  variant,
+  selected,
+  onPress,
+}) => {
+  const isComplete = variant === "complete";
+
+  return (
+    <TouchableOpacity style={styles.statusRowItem} onPress={onPress}>
+      <View style={styles.statusRowLeft}>
+        {/* Left icon / circle */}
+        {isComplete ? (
+          <View style={[styles.statusCircle, styles.statusCircleComplete]}>
+            <Icon name="check" size={12} color="#000" />
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.statusCircle,
+              variant === "todo" && !selected && styles.statusCircleTodo,
+              selected && variant === "in-progress"
+                ? styles.statusCircleActive
+                : styles.statusCircleIdle,
+            ]}
+          >
+            {selected && variant === "in-progress" && (
+              <View style={styles.statusCircleInner} />
+            )}
+          </View>
+        )}
+
+        <Text
+          style={[
+            styles.statusRowLabel,
+            selected && styles.statusRowLabelSelected,
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+
+      {/* Right check icon when selected */}
+      {selected && (
+        <Icon
+          name="check-circle"
+          size={18}
+          color={isComplete ? "#22c55e" : COLORS.primary}
+        />
+      )}
+    </TouchableOpacity>
+  );
+};
+
+/* --------- TASK TYPE COMPONENTS --------- */
+
+type TaskTypeKey = "task" | "milestone" | "form" | "note";
+
+type TaskTypeRowProps = {
+  label: string;
+  iconName: string;
+  selected?: boolean;
+  comingSoon?: boolean;
+  onPress?: () => void;
+};
+
+const TaskTypeRow: React.FC<TaskTypeRowProps> = ({
+  label,
+  iconName,
+  selected,
+  comingSoon,
+  onPress,
+}) => {
+  const disabled = !!comingSoon;
+
+  return (
+    <TouchableOpacity
+      style={styles.taskTypeRow}
+      disabled={disabled}
+      onPress={onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+    >
+      <View style={styles.taskTypeLeft}>
+        <Icon
+          name={iconName}
+          size={18}
+          color={
+            disabled
+              ? COLORS.textMuted
+              : selected
+                ? COLORS.primary
+                : COLORS.textSecondary
+          }
+          style={{ marginRight: 10 }}
+        />
+
+        <View>
+          <Text
+            style={[
+              styles.taskTypeLabel,
+              selected && !disabled && { color: COLORS.primary },
+            ]}
+          >
+            {label}
+          </Text>
+
+          {comingSoon && (
+            <Text style={styles.taskTypeComingSoonText}>Coming Soon</Text>
+          )}
+        </View>
+      </View>
+
+      {selected && !disabled && (
+        <Icon name="check-circle" size={18} color={COLORS.primary} />
+      )}
+    </TouchableOpacity>
+  );
+};
+
+/* --------- ACTIVITY TYPES --------- */
+
+type ActivityEvent = {
+  id: string;
+  kind: "system" | "status" | "comment";
+  createdAt: string;
+  message?: string;
+  author?: string;
+  fromStatus?: StatusKey;
+  toStatus?: StatusKey;
+};
+
+const initialActivity: ActivityEvent[] = [
   {
-    title: "Prem 2nd House",
-    address: "23, Mokshita Dairy",
-    progress: 0.15,
-    inAmount: 157,
-    outAmount: 6820,
-    view: 'grid',
+    id: "1",
+    kind: "system",
+    createdAt: "Thursday, 8:20 PM",
+    message: "You created this task",
   },
   {
-    title: "Teacher Kolony",
-    address: "23, Mokshita Dairy",
-    progress: 0.7,
-    inAmount: 140,
-    outAmount: 1200,
-    view: 'grid',
+    id: "2",
+    kind: "status",
+    createdAt: "Thursday, 8:20 PM",
+    message: "You changed status to",
+    fromStatus: "todo",
+    toStatus: "in-progress",
   },
   {
-    title: "KOTA House",
-    address: "23, Mokshita Dairy",
-    progress: 1,
-    inAmount: 5000,
-    outAmount: 27000,
-    view: 'grid',
+    id: "3",
+    kind: "comment",
+    createdAt: "Thursday, 8:25 PM",
+    author: "Devashish",
+    message: "Hi",
   },
   {
-    title: "Jaipur House",
-    address: "23, Mokshita Dairy",
-    progress: 0,
-    inAmount: 0,
-    outAmount: 400,
-    view: 'grid',
+    id: "4",
+    kind: "status",
+    createdAt: "Thursday, 8:26 PM",
+    message: "You changed status to",
+    fromStatus: "in-progress",
+    toStatus: "complete",
   },
   {
-    title: "KOTA House",
-    address: "23, Mokshita Dairy",
-    progress: 1,
-    inAmount: 5000,
-    outAmount: 27000,
-    view: 'grid',
-    images: [IMAGES.projectpic3,IMAGES.projectpic4,IMAGES.projectpic5,IMAGES.projectpic6,IMAGES.projectpic5,IMAGES.projectpic6],
-  },
-  {
-    title: "Jaipur House",
-    address: "23, Mokshita Dairy",
-    progress: 0,
-    inAmount: 0,
-    outAmount: 400,
-    view: 'grid',
-    images: [IMAGES.projectpic2],
-  },
-  {
-    title: "Prem 2nd House",
-    address: "23, Mokshita Dairy, Sector B",
-    progress: 0.52,
-    inAmount: 5000,
-    outAmount: 27000,
-    view: 'list',
-    images: [IMAGES.projectpic1],
-  },
-  {
-    title: "Prem 2nd House",
-    address: "23, Mokshita Dairy, Sector B",
-    progress: 0.52,
-    inAmount: 5000,
-    outAmount: 27000,
-    view: 'list',
+    id: "5",
+    kind: "status",
+    createdAt: "Thursday, 8:30 PM",
+    message: "You changed status to",
+    fromStatus: "complete",
+    toStatus: "in-progress",
   },
 ];
 
-const DROPDOWN_OPTIONS = ['All', 'Ongoing', 'Completed', 'Not Started', 'On Hold'];
+/* -------------------------------------------------------------- */
 
-type ProjectScreenProps = StackScreenProps<RootStackParamList, 'Project'>;
+const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
+  // Make params safe in case this screen is opened without activityName
+  const activityName = route?.params?.activityName ?? "Task name";
 
-const Project = ({navigation} : ProjectScreenProps)  => {
+  const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
+  const [statusActiveTab, setStatusActiveTab] =
+    useState<"status" | "taskType">("status");
+  const [status, setStatus] = useState<StatusKey>("in-progress");
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
-    const theme = useTheme();
-    const { colors } : {colors : any } = theme;
+  const [taskType, setTaskType] = useState<TaskTypeKey>("task");
 
-    const [showSearch, setShowSearch] = useState(false);
-    const translateX = useRef(new Animated.Value(-300)).current;
-  
-    const openSearchBar = () => {
-      setShowSearch(true);
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+  // visibility for inline property box
+  const [propertyModalVisible, setPropertyModalVisible] = useState(false);
+
+  // Activity state
+  const [activity, setActivity] = useState<ActivityEvent[]>(initialActivity);
+  const [commentText, setCommentText] = useState("");
+
+  const openStatusModal = () => setStatusModalVisible(true);
+  const closeStatusModal = () => setStatusModalVisible(false);
+
+  const handleSendComment = () => {
+    const trimmed = commentText.trim();
+    if (!trimmed) return;
+
+    const newEvent: ActivityEvent = {
+      id: Date.now().toString(),
+      kind: "comment",
+      createdAt: "Just now",
+      author: "You",
+      message: trimmed,
     };
-  
-    const closeSearchBar = () => {
-      Animated.timing(translateX, {
-        toValue: 400, // Slide out to right
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowSearch(false);
-        translateX.setValue(-300); // RESET to left (prepare for next open)
-      });
-    };
 
-    const [selected, setSelected] = useState('All');
-    const [isOpen, setIsOpen] = useState(false);
-    const [animation] = useState(new Animated.Value(0));
-  
-    const toggleDropdown = () => {
-      setIsOpen(!isOpen);
-      Animated.timing(animation, {
-        toValue: isOpen ? 0 : 1,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    };
-  
-    const handleSelect = (value: string) => {
-      setSelected(value);
-      toggleDropdown();
-    };
-  
-    const heightInterpolate = animation.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, DROPDOWN_OPTIONS.length * 33], // height per item
-    });
+    setActivity((prev) => [...prev, newEvent]);
+    setCommentText("");
+  };
 
+  const renderStatusChip = (value: StatusKey) => {
+    let iconName: string = "circle";
+    let color = COLORS.textSecondary;
+
+    if (value === "in-progress") {
+      iconName = "info";
+      color = "#3b82f6";
+    } else if (value === "complete") {
+      iconName = "check-circle";
+      color = "#22c55e";
+    } else if (value === "todo") {
+      iconName = "loader";
+      color = "#e5e7eb";
+    }
 
     return (
-      <SafeAreaView style={{ backgroundColor: colors.background, flex: 1, marginBottom: 0 }}>
-        <StatusBar backgroundColor={colors.background}/>
-        <View style={[GlobalStyleSheet.container, {padding:0}]}>
-          <View 
-              style={[GlobalStyleSheet.flexcenter,{
-                  height:60, 
-                  zIndex: 11,
-                  backgroundColor:colors.background,
-                  paddingHorizontal:20
-              }]}
+      <View style={styles.activityStatusChip}>
+        <Icon
+          name={iconName}
+          size={14}
+          color={color}
+          style={{ marginRight: 4 }}
+        />
+        <Text style={[styles.activityStatusChipText, { color }]}>
+          {statusLabelMap[value]}
+        </Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* If you want a header, add it here */}
+      <SubHeader />
+      {/* <Header navigation={navigation} title="Project" /> */}
+
+      {/* Top Tabs: Details / Activity */}
+      <View style={styles.tabsRow}>
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("details")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "details"
+                ? styles.tabTextActive
+                : styles.tabTextInactive,
+            ]}
           >
-              <TouchableOpacity
-                  onPress={() => navigation.openDrawer()}
-                  style={{flex:1}}
-              >
-                  <Image
-                      style={{
-                          height:16,
-                          width:24,
-                      }}
-                      tintColor={colors.title}
-                      resizeMode='contain'
-                      source={IMAGES.menu}
-                  />
+            Details
+          </Text>
+          {activeTab === "details" && <View style={styles.tabIndicator} />}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => setActiveTab("activity")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "activity"
+                ? styles.tabTextActive
+                : styles.tabTextInactive,
+            ]}
+          >
+            Activity
+          </Text>
+          {activeTab === "activity" && <View style={styles.tabIndicator} />}
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "details" ? (
+        /* ---------------- DETAILS TAB ---------------- */
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.listLabel}>Personal List</Text>
+
+          <Text style={styles.titleText}>{activityName}</Text>
+
+          {/* Status & Type row – opens modal */}
+          <TouchableOpacity style={styles.sectionRow} onPress={openStatusModal}>
+            <View style={styles.statusIconWrapper}>
+              <View style={styles.statusOuterDot}>
+                <View style={styles.statusInnerDot} />
+              </View>
+            </View>
+
+            <View>
+              <Text style={styles.sectionLabel}>Status & Type</Text>
+              <Text style={styles.statusText}>
+                {statusLabelMap[status] ?? "IN PROGRESS"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Assignee */}
+          <TouchableOpacity style={styles.rowButton}>
+            <View style={styles.rowLeft}>
+              <View style={styles.rowIconWrapper}>
+                <Icon name="user" size={16} color="#fff" />
+              </View>
+              <Text style={styles.rowLabel}>Add Assignee</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color="#777" />
+          </TouchableOpacity>
+
+          {/* Due Date */}
+          <TouchableOpacity style={styles.rowButtonDate}>
+            <View style={styles.rowLeft}>
+              <View style={styles.rowIconWrapper}>
+                <Icon name="calendar" size={16} color="#fff" />
+              </View>
+              <View>
+                <Text style={styles.rowLabel}>Due date</Text>
+                <Text style={styles.rowValue}>Nov 24</Text>
+              </View>
+            </View>
+            <Icon name="chevron-right" size={18} color="#777" />
+          </TouchableOpacity>
+
+          {/* Add property */}
+          <TouchableOpacity
+            style={styles.addPropertyRow}
+            onPress={() =>
+              setPropertyModalVisible((prevVisible) => !prevVisible)
+            }
+          >
+            <Icon name="plus" size={16} color={COLORS.primary} />
+            <Text style={styles.addPropertyText}>Add property</Text>
+          </TouchableOpacity>
+
+          {/* Inline property box directly under "Add property" */}
+          {propertyModalVisible && (
+            <View style={styles.propertyInlineCard}>
+              <TouchableOpacity style={styles.propertyItem}>
+                <View style={styles.propertyItemLeft}>
+                  <Icon name="flag" size={16} color={COLORS.primary} />
+                  <Text style={styles.propertyItemLabel}>Priority</Text>
+                </View>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  height:30,
-                  padding:8,
-                  borderRadius:6,
-                  backgroundColor:'#FFB743',
-                  flexDirection:'row',
-                  alignItems:'center',
-                  gap:5,
-                  marginRight:40
-                }}
-              >
-                  <Image
-                    style={{
-                      height:15,
-                      width:15
-                    }}
-                    resizeMode='contain'
-                    source={IMAGES.crown}
-                  />
-                  <Text style={{...FONTS.fontMedium,fontSize:12,color:colors.title,lineHeight:14}}>Upgrade</Text>
+
+              <TouchableOpacity style={styles.propertyItem}>
+                <View style={styles.propertyItemLeft}>
+                  <Icon name="tag" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.propertyItemLabel}>Tags</Text>
+                </View>
+                <Icon
+                  name="chevron-right"
+                  size={16}
+                  color={COLORS.textMuted}
+                />
               </TouchableOpacity>
+
               <TouchableOpacity
-                  activeOpacity={0.5}
-                  onPress={() => navigation.navigate('Notification')}
-                  style={{ 
-                    padding: 5,
-                    height:40,
-                    width:40,
-                    borderRadius:30,
-                    backgroundColor:'transparent',
-                    alignItems:'center',
-                    justifyContent:'center',
-                    position:'absolute',
-                    right:15
-                  }}
+                style={[styles.propertyItem, { borderBottomWidth: 0 }]}
               >
-                  <FeatherIcon name='bell' color={colors.text} size={20}/>
-                  <View
-                    style={{
-                      height:10,
-                      width:10,
-                      borderRadius:5,
-                      backgroundColor:'#EA4230',
-                      borderWidth:2,
-                      borderColor:colors.card,
-                      position:'absolute',
-                      right:10,
-                      top:10
-                    }}
+                <View style={styles.propertyItemLeft}>
+                  <Icon
+                    name="clock"
+                    size={16}
+                    color={COLORS.textSecondary}
                   />
+                  <Text style={styles.propertyItemLabel}>Time tracking</Text>
+                </View>
+                <Icon
+                  name="chevron-right"
+                  size={16}
+                  color={COLORS.textMuted}
+                />
               </TouchableOpacity>
+
+              <TouchableOpacity style={styles.propertyAddSubtaskRow}>
+                <Text style={styles.propertyAddSubtaskText}>Add Subtask</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Divider – full width */}
+          <View style={styles.divider} />
+
+          {/* Description */}
+          <TouchableOpacity style={styles.rowButtonDesc}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.sectionLabel}>Description</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity>
+            <Text style={styles.descriptionPlaceholder}>
+              Tap to add a description
+            </Text>
+          </TouchableOpacity>
+
+          {/* Divider – full width */}
+          <View style={styles.divider} />
+
+          {/* Upload Document */}
+          <TouchableOpacity style={styles.rowButtonDesc}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.sectionLabel}>Upload Document</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.addPropertyRowDoc}>
+            <Icon name="plus" size={16} color={COLORS.primary} />
+            <Text style={styles.addPropertyText}>Add Document</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      ) : (
+        /* ---------------- ACTIVITY TAB ---------------- */
+        <View style={styles.activityContainer}>
+          <ScrollView
+            style={styles.activityScroll}
+            contentContainerStyle={styles.activityScrollContent}
+          >
+            {activity.map((item) => {
+              if (item.kind === "comment") {
+                // Comment card
+                return (
+                  <View key={item.id} style={styles.activityCommentBlock}>
+                    <View style={styles.activityCommentHeader}>
+                      <View style={styles.activityAvatar}>
+                        <Text style={styles.activityAvatarInitial}>
+                          {item.author?.[0] ?? "U"}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.activityCommentTitleRow}>
+                          <Text style={styles.activityAuthor}>
+                            {item.author}
+                          </Text>
+                          <Text style={styles.activityTimestamp}>
+                            {item.createdAt}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={styles.activityCommentText}>
+                      {item.message}
+                    </Text>
+                  </View>
+                );
+              }
+
+              // System / status card
+              return (
+                <View key={item.id} style={styles.activityCard}>
+                  <Text style={styles.activitySystemText}>
+                    {item.message || "Activity"}
+                  </Text>
+
+                  {item.kind === "status" &&
+                    item.fromStatus &&
+                    item.toStatus && (
+                      <View style={styles.activityStatusRow}>
+                        {renderStatusChip(item.fromStatus)}
+                        <Icon
+                          name="arrow-right"
+                          size={14}
+                          color={COLORS.textSecondary}
+                          style={{ marginHorizontal: 6 }}
+                        />
+                        {renderStatusChip(item.toStatus)}
+                      </View>
+                    )}
+
+                  <Text style={styles.activityTimestampSmall}>
+                    {item.createdAt}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          {/* Comment composer fixed at bottom */}
+          <View style={styles.commentBar}>
+            <View style={styles.commentPlusWrap}>
+              <Icon name="plus" size={18} color={COLORS.textSecondary} />
+            </View>
+
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Write a comment"
+              placeholderTextColor={COLORS.textMuted}
+              value={commentText}
+              onChangeText={setCommentText}
+            />
+
+            <TouchableOpacity onPress={handleSendComment}>
+              <Icon
+                name="send"
+                size={18}
+                color={
+                  commentText.trim().length
+                    ? COLORS.primary
+                    : COLORS.textMuted
+                }
+              />
+            </TouchableOpacity>
           </View>
         </View>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{flexGrow:1}}>
-          <View style={[GlobalStyleSheet.container,{padding:0,flex:1,zIndex:999}]}>
-            <DropShadow
-                style={[{
-                    shadowColor: '#000',
-                    shadowOffset: {
-                        width: 0,
-                        height: -4,
-                    },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 4,
-                },Platform.OS === 'ios' && {
-                    backgroundColor:'transparent',
-                }]}
-            >
-              <View
-                style={[GlobalStyleSheet.container,
-                  {
-                    paddingTop:10,
-                    padding:0,
-                    backgroundColor:colors.background,
-                    borderBottomWidth:1,
-                    borderColor:'#EEEEEE',
-                    position:'relative',
-                    // zIndex:9999
-                  }
-                ]}
+      )}
+
+      {/* -------- Status & Task Type Modal -------- */}
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeStatusModal}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity onPress={closeStatusModal}>
+            <View style={styles.modelBlur} />
+          </TouchableOpacity>
+
+          <View style={styles.modalContainer}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Status & Task Type</Text>
+
+              <TouchableOpacity
+                onPress={closeStatusModal}
+                style={{ padding: 4 }}
               >
-                <LinearGradient
-                    locations={[0.3,0.60,0.7]}
-                    colors={
-                        theme.dark ?
-                        ["rgba(12,16,28,0.3)","rgba(12,16,28,.95)","rgba(12,16,28,1)"]
-                        :
-                        ["#F9F9F9","#F9F9F9","#FFFFFF"]
-                    }
-                    style={{
-                      position:'absolute',
-                      bottom:0,
-                      top:0,
-                      left:0,
-                      right:0
-                    }}
-                />
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={{
-                    height:135,
-                    overflow:'hidden',
-                    borderRadius:8,
-                    marginBottom:10,
-                    marginHorizontal:20
-                  }}
+                <Text style={styles.modalDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.tabsRow}>
+              <TouchableOpacity
+                style={styles.tabItem}
+                onPress={() => setStatusActiveTab("status")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    statusActiveTab === "status"
+                      ? styles.tabTextActive
+                      : styles.tabTextInactive,
+                  ]}
                 >
-                  <ImageBackground
-                    style={{flex:1}}
-                    source={IMAGES.Shap1}
-                  >
-                    <View
-                      style={[GlobalStyleSheet.flexcenter,{
-                        flex:1,
-                        padding:20,
-                        borderRadius:8,
-                        alignItems:'flex-end',
-                        overflow:'hidden',
-                      }]}
-                    >
-                      <View style={[{flexDirection:'column',justifyContent:'flex-end'}]}>
-                        <View style={{flex:1}}>
-                          <Text style={{...FONTS.fontMedium,fontSize:18,color:COLORS.card,marginBottom:2}}>Approval</Text>
-                          <Text style={{...FONTS.fontLight,fontSize:14,color:COLORS.card}}>Pending Approval</Text>
-                        </View>
-                        <Text style={{...FONTS.fontMedium,fontSize:28,color:COLORS.card}}>07</Text>
-                      </View>
-                      <FeatherIcon name='arrow-right' color={COLORS.card} size={22}/>
-                    </View>
-                  </ImageBackground>
-                </TouchableOpacity>
-                <View style={[GlobalStyleSheet.flexcenter,{justifyContent:'center',gap:10,paddingHorizontal:20,marginBottom:25}]}>
-                    <TouchableOpacity
-                      activeOpacity={0.8} 
-                      style={[GlobalStyleSheet.col50,{
-                        padding:20,
-                        paddingHorizontal:20,
-                        borderRadius:8,
-                        backgroundColor:colors.card,
-                        borderWidth:1,
-                        borderColor:'#EFEFEF'
-                      }]}
-                    >
-                      <Text style={{...FONTS.fontMedium,fontSize:18,color:colors.title,marginBottom:2}}>Material</Text>
-                      <Text style={{...FONTS.fontLight,fontSize:14,color:colors.text}}>Request</Text>
-                      <View style={[GlobalStyleSheet.flexcenter,{marginTop:35}]}>
-                        <Text style={{...FONTS.fontMedium,fontSize:28,color:colors.title}}>10</Text>
-                        <FeatherIcon name='arrow-right' color={COLORS.primary} size={22}/>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.8} 
-                      style={[GlobalStyleSheet.col50,{
-                        padding:20,
-                        paddingHorizontal:20,
-                        borderRadius:8,
-                        backgroundColor:colors.card,
-                        borderWidth:1,
-                        borderColor:'#EFEFEF'
-                      }]}
-                    >
-                      <Text style={{...FONTS.fontMedium,fontSize:18,color:colors.title,marginBottom:2}}>To Do</Text>
-                      <Text style={{...FONTS.fontLight,fontSize:14,color:colors.text}}>Pending</Text>
-                      <View style={[GlobalStyleSheet.flexcenter,{marginTop:35}]}>
-                        <Text style={{...FONTS.fontMedium,fontSize:28,color:colors.title}}>12</Text>
-                        <FeatherIcon name='arrow-right' color={COLORS.primary} size={22}/>
-                      </View>
-                    </TouchableOpacity>
-                </View>
-                <View style={[GlobalStyleSheet.flexcenter,{paddingHorizontal:20,marginBottom:15,}]}>
-                  <View style={{flexDirection:'row',alignItems:'center',gap:15}}>
-                    <View>
-                      <TouchableOpacity
-                          onPress={toggleDropdown}
-                          activeOpacity={0.5} 
-                          style={{flexDirection:'row',alignItems:'center',gap:5}}
-                      >
-                          <Text style={[FONTS.fontLg,{color:colors.title}]}>{selected}</Text>
-                          <FeatherIcon size={16} color={colors.text} name={isOpen ? "chevron-up" : "chevron-down"}/>
-                      </TouchableOpacity>
-                      <Animated.View 
-                        style={[{ 
-                            width:200,
-                            height: heightInterpolate,
-                            position:'absolute',
-                            top:40,
-                            zIndex:99,
-                            overflow: 'hidden',
-                            backgroundColor: colors.card,
-                            borderRadius: 8,
-                            elevation: 5,
-                        }]}>
-                        <FlatList
-                          data={DROPDOWN_OPTIONS}
-                          keyExtractor={(item) => item}
-                          renderItem={({ item }:any) => (
-                            <TouchableOpacity 
-                              onPress={() => handleSelect(item)}
-                              style={{
-                                paddingVertical:6,
-                                paddingHorizontal:20,
-                                flexDirection:'row',
-                                alignItems:'center',
-                                gap:10
-                              }}
-                            >
-                              <View
-                                style={[{
-                                  height: 8,
-                                  width: 8,
-                                  borderRadius: 4,
-                                  backgroundColor:colors.text,
-                                },item === 'Ongoing' && {
-                                  backgroundColor:'#419A90'
-                                },item === 'Completed' && {
-                                  backgroundColor:'#6A38FF'
-                                },item === 'On Hold' && {
-                                  backgroundColor:'#E8B73D'
-                                },item === 'Not Started' && {
-                                  backgroundColor:'#DD1951'
-                                }]}
-                              />
-                              <Text 
-                                style={[
-                                  FONTS.font,FONTS.fontMedium,
-                                  {
-                                    color:colors.text
-                                  },item === 'Ongoing' && {
-                                    color:'#419A90'
-                                  },item === 'Completed' && {
-                                    color:'#6A38FF'
-                                  },item === 'On Hold' && {
-                                    color:'#E8B73D'
-                                  },item === 'Not Started' && {
-                                    color:'#DD1951'
-                                  }]}>{item}</Text>
-                            </TouchableOpacity>
-                          )}
-                        />
-                      </Animated.View>
-                    </View>
-                    <TouchableOpacity
-                      onPress={openSearchBar}  
-                      activeOpacity={0.5}
-                    >
-                      <FeatherIcon color={COLORS.primary} size={16} name='search'/>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('CreateProject')}
-                    activeOpacity={0.5}
-                    style={{flexDirection:'row',alignItems:'center',gap:3}}
-                  >
-                    <FeatherIcon color={COLORS.primary} size={16} name='plus'/>
-                    <Text style={{...FONTS.fontMedium,fontSize:15,color:COLORS.primary,lineHeight:20}}>Project</Text>
-                  </TouchableOpacity>
-                  {showSearch && (
-                    <Animated.View style={[{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.background,
-                        borderWidth:1,
-                        borderColor:colors.border,
-                        borderRadius: 8,
-                        paddingHorizontal: 10,
-                        height: 40,
-                        width: '65%',
-                        position: 'absolute',
-                        left: 15,
-                        transform: [{ translateX }] 
-                    }]}>
-                        <TextInput
-                            placeholder="Search..."
-                            style={[FONTS.font,FONTS.fontMedium,{
-                              color:colors.title,
-                              flex: 1,
-                            }]}
-                            placeholderTextColor={colors.placeholder}
-                            multiline
-                        />
-                        <TouchableOpacity onPress={closeSearchBar}>
-                          <FeatherIcon name="x" size={20} color={colors.text} />
-                        </TouchableOpacity>
-                    </Animated.View>
-                  )}
-                </View>
-              </View>
-            </DropShadow>
+                  Status
+                </Text>
+                {statusActiveTab === "status" && (
+                  <View style={styles.tabIndicator} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.tabItem}
+                onPress={() => setStatusActiveTab("taskType")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    statusActiveTab === "taskType"
+                      ? styles.tabTextActive
+                      : styles.tabTextInactive,
+                  ]}
+                >
+                  Task Type
+                </Text>
+                {statusActiveTab === "taskType" && (
+                  <View style={styles.tabIndicator} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {statusActiveTab === "status" ? (
+              <ScrollView style={styles.modalScroll}>
+                {/* Not started */}
+                <Text style={styles.modalSectionHeading}>Not started</Text>
+                <StatusRow
+                  label="TO DO"
+                  variant="todo"
+                  selected={status === "todo"}
+                  onPress={() => setStatus("todo")}
+                />
+                <View style={styles.modalDividerThin} />
+
+                {/* Active */}
+                <Text style={styles.modalSectionHeading}>Active</Text>
+                <StatusRow
+                  label="IN PROGRESS"
+                  variant="in-progress"
+                  selected={status === "in-progress"}
+                  onPress={() => setStatus("in-progress")}
+                />
+                <View style={styles.modalDividerThin} />
+
+                {/* Closed */}
+                <Text style={styles.modalSectionHeading}>Closed</Text>
+                <StatusRow
+                  label="COMPLETE"
+                  variant="complete"
+                  selected={status === "complete"}
+                  onPress={() => setStatus("complete")}
+                />
+              </ScrollView>
+            ) : (
+              /* Task Type list */
+              <ScrollView style={styles.modalScroll}>
+                <TaskTypeRow
+                  label="Task"
+                  iconName="check-circle"
+                  selected={taskType === "task"}
+                  onPress={() => setTaskType("task")}
+                />
+                <TaskTypeRow label="Milestone" iconName="flag" comingSoon />
+                <TaskTypeRow
+                  label="Form Response"
+                  iconName="file-text"
+                  comingSoon
+                />
+                <TaskTypeRow
+                  label="Meeting Note"
+                  iconName="calendar"
+                  comingSoon
+                />
+              </ScrollView>
+            )}
           </View>
-          <View style={[GlobalStyleSheet.container,{flex:1,padding:20,}]}>
-              {/* ProjectCards Start*/}
-              <View style={[GlobalStyleSheet.row]}>
-                {ProjectCards.map((data:any,index:any) => {
-                  if(data.view === 'list'){
-                    return(
-                      <View
-                        key={index}
-                        style={[GlobalStyleSheet.col50,{width:'100%'}]}
-                      >
-                        <TouchableOpacity
-                          onPress={() => navigation.navigate('ProjectDetails',{data : data})}
-                          activeOpacity={0.8}
-                          style={{
-                            backgroundColor:colors.card,
-                            borderRadius:6,
-                            borderWidth:1,
-                            borderColor:'#EFEFEF',
-                            marginBottom:10,
-                            overflow:'hidden',
-                          }}
-                        >
-                          <View style={{flexDirection:'row',alignItems:'center',width:'100%'}}>
-                            {data.images && (
-                              <View style={{width:'25%'}}>
-                                <View
-                                  style={{
-                                    width:'100%',
-                                    height:null,
-                                    aspectRatio:1/1.25,
-                                    alignItems:'center',
-                                    justifyContent:'center',
-                                  }}
-                                >
-                                  <Image
-                                    style={{
-                                      width:'100%',
-                                      height:'100%'
-                                    }}
-                                    resizeMode='cover'
-                                    source={data.images[0]}
-                                  />
-                                </View>
-                              </View>
-                            )}
-                            <View style={{width:data.images ? '75%': '100%'}}>
-                              <View
-                                style={[GlobalStyleSheet.flexcenter,{
-                                  padding:15,
-                                  alignItems:'flex-start',
-                                  borderBottomWidth: 1,
-                                  borderColor: '#EFEFEF',
-                                }]}
-                              >
-                                <View style={{flexDirection:'row',gap:10}}>
-                                  <Progresscircle progress={data.progress}/>
-                                  <View>
-                                    <Text style={{...FONTS.fontMedium,fontSize:15,color:colors.title}}>{data.title}</Text>
-                                    <Text style={[FONTS.font,{fontSize:14, color:colors.text,marginTop:3}]}>{data.address}</Text>
-                                  </View>
-                                </View>
-                                <TouchableOpacity
-                                  activeOpacity={0.5}
-                                  style={{
-                                    height:45,
-                                    width:45,
-                                    borderRadius:25,
-                                    alignItems:'center',
-                                    justifyContent:'center',
-                                    position:'absolute',
-                                    right:0,
-                                    top:5
-                                  }}
-                                >
-                                  <Ionicons name='ellipsis-vertical' size={16} color={colors.text} style={{opacity:0.5}}/>
-                                </TouchableOpacity>
-                              </View>
-                              <View style={[GlobalStyleSheet.flexcenter,{padding:15, paddingHorizontal:20,justifyContent:'center'}]}>
-                                  <Text style={[FONTS.fontMedium,{fontSize:13, color:'#419A90',lineHeight:16,flex:1}]}>₹ {data.inAmount} In</Text>
-                                  <Text numberOfLines={1} style={[FONTS.fontMedium,{fontSize:13, color:'#DD1951',lineHeight:16,flex:1,marginRight:50}]}>₹ {data.outAmount} Out</Text>
-                                  <TouchableOpacity
-                                    activeOpacity={0.8}
-                                    style={{
-                                      height:40,
-                                      width:40,
-                                      borderRadius:50,
-                                      alignItems:'center',
-                                      justifyContent:'center',
-                                      position:'absolute',
-                                      right:10,
-                                    }}
-                                  >
-                                    <FeatherIcon name='arrow-right' color={COLORS.primary} style={{opacity:0.4}} size={18}/>
-                                  </TouchableOpacity>
-                              </View>
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      </View>
-                    )
-                  }else{
-                    return(
-                      <View
-                        key={index}
-                        style={[GlobalStyleSheet.col50]}
-                      >
-                        <TouchableOpacity
-                          onPress={() => navigation.navigate('ProjectDetails',{data : data})}
-                          activeOpacity={0.8}
-                          style={{
-                            backgroundColor:colors.card,
-                            borderRadius:6,
-                            borderWidth:1,
-                            borderColor:'#EFEFEF',
-                            marginBottom:10,
-                            overflow:'hidden'
-                          }}
-                        >
-                          {data.images?.length > 0 && (
-                            <View style={{ width: '100%' }}>
-                              {/* If only 1 image */}
-                              {data.images.length === 1 ? (
-                                <View
-                                  style={{
-                                    width: '100%',
-                                    height:null,
-                                    aspectRatio: 1 / 0.4,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  }}
-                                >
-                                  <Image
-                                    style={{ width: '100%', height: '100%' }}
-                                    resizeMode="cover"
-                                    source={data.images[0]}
-                                  />
-                                </View>
-                              ) : (
-                                // If multiple images
-                                <View 
-                                  style={{ 
-                                    flexDirection: 'row', 
-                                    width: '100%',
-                                    height:null,
-                                    aspectRatio: 1 / 0.4,
-                                    overflow: 'hidden' 
-                                  }}
-                                >
-                                  {/* Left big image */}
-                                  <Image
-                                    source={data.images[0]}
-                                    style={{
-                                      width: '50%',
-                                      height: '100%',
-                                      marginRight:1
-                                    }}
-                                    resizeMode="cover"
-                                  />
+        </View>
+      </Modal>
+    </View>
+  );
+};
 
-                                  {/* Right: top image + bottom two small */}
-                                  <View style={{ width: '50%' }}>
-                                    {data.images.length === 2 ? (
-                                      <Image
-                                        source={data.images[1]}
-                                        style={{
-                                          width: '100%',
-                                          height: '100%' 
-                                        }}
-                                        resizeMode="cover"
-                                      />
-                                    ) : (
-                                      <>  
-                                        {/* Top right image */}
-                                        <Image
-                                          source={data.images[1]}
-                                          style={{
-                                            width: '100%',
-                                            height: '50%',
-                                            marginBottom:1
-                                          }}
-                                          resizeMode="cover"
-                                        />
+export default Project;
 
-                                        {/* Bottom row (2 small images) */}
-                                        <View style={{ flexDirection: 'row', height: '50%' }}>
-                                          {data.images.length === 3 ? (
-                                            <View 
-                                              style={{ 
-                                                flex: 1,
-                                              }}
-                                            >
-                                              <Image
-                                                source={data.images[2]}
-                                                style={{ width: '100%', height: '100%' }}
-                                                resizeMode="cover"
-                                              />
-                                            </View>
-                                          ) : (
-                                            [2, 3].map((index) => (
-                                              <View
-                                                key={index}
-                                                style={{
-                                                  flex: 1,
-                                                  borderRightWidth: index === 2 ? 1 : 0,
-                                                  borderColor: colors.card,
-                                                }}
-                                              >
-                                                <Image
-                                                  source={data.images[index]}
-                                                  style={{ width: '100%', height: '100%' }}
-                                                  resizeMode="cover"
-                                                />
-  
-                                                {/* Overlay +x on the last image if needed */}
-                                                {index === 3 && data.images.length > 4 && (
-                                                  <View
-                                                    style={{
-                                                      ...StyleSheet.absoluteFillObject,
-                                                      backgroundColor: 'rgba(0,0,0,0.4)',
-                                                      justifyContent: 'center',
-                                                      alignItems: 'center',
-                                                    }}
-                                                  >
-                                                    <Text style={{...FONTS.fontSemiBold, fontSize: 15 ,color:COLORS.card}}>
-                                                      +{data.images.length - 4}
-                                                    </Text>
-                                                  </View>
-                                                )}
-                                              </View>
-                                            ))
-                                          )}
-                                        </View>
-                                      </>
-                                    )}
-                                  </View>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                          <View
-                            style={[GlobalStyleSheet.flexcenter,{
-                              padding:15,
-                              paddingBottom:10,
-                              alignItems:'flex-start'
-                            }]}
-                          >
-                            <View>
-                              <Text style={{...FONTS.fontMedium,fontSize:15,color:colors.title}}>{data.title}</Text>
-                              <View style={{marginTop:3}}>
-                                <Text numberOfLines={1} style={[FONTS.font,{fontSize:13, color:colors.text}]}>{data.address}</Text>
-                              </View>
-                            </View>
-                            <TouchableOpacity
-                              activeOpacity={0.5}
-                              style={{
-                                height:45,
-                                width:45,
-                                borderRadius:25,
-                                alignItems:'center',
-                                justifyContent:'center',
-                                position:'absolute',
-                                right:0,
-                                top:0
-                              }}
-                            >
-                              <Ionicons name='ellipsis-vertical' size={16} color={colors.text} style={{opacity:0.5}}/>
-                            </TouchableOpacity>
-                          </View>
-                          <ProgressBar progress={data.progress} />
-                          <View style={{padding:15}}>
-                              <Text style={[FONTS.fontMedium,{fontSize:13, color:'#419A90',lineHeight:16}]}>₹ {data.inAmount} In</Text>
-                              <View
-                                style={[GlobalStyleSheet.flexcenter,{paddingTop:5}]}
-                              >
-                                <Text style={[FONTS.fontMedium,{fontSize:13, color:'#DD1951',lineHeight:16}]}>₹ {data.outAmount} Out</Text>
-                                <TouchableOpacity
-                                  activeOpacity={0.8}
-                                  style={{
-                                    height:40,
-                                    width:40,
-                                    borderRadius:50,
-                                    alignItems:'center',
-                                    justifyContent:'center',
-                                    position:'absolute',
-                                    right:-10,
-                                  }}
-                                >
-                                  <FeatherIcon name='arrow-right' color={COLORS.primary} style={{opacity:0.4}} size={18}/>
-                                </TouchableOpacity>
-                              </View>
-                          </View>
-                        </TouchableOpacity>
-                      </View>
-                    )
-                  }
-                })}
-              </View>
-              {/* ProjectCards Start*/}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    )
-}
+/* ---------- Styles ---------- */
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    // paddingTop: 20,
+  },
 
-export default Project
+  /* Top tabs */
+  tabsRow: {
+    flexDirection: "row",
+    paddingTop: 20,
+    borderBottomColor: COLORS.textMuted,
+    borderBottomWidth: 1,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+    position: "relative",
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  tabTextActive: {
+    color: COLORS.textSecondary,
+  },
+  tabTextInactive: {
+    color: COLORS.textMuted,
+  },
+  tabIndicator: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: 2,
+    backgroundColor: COLORS.primary,
+  },
+
+  /* Main content */
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  listLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  titleText: {
+    color: COLORS.textSecondary,
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomColor: COLORS.textSecondary,
+    borderBottomWidth: 1,
+  },
+
+  statusIconWrapper: {
+    marginRight: 10,
+  },
+  statusOuterDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statusInnerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+  },
+
+  sectionLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+  },
+  statusText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+
+  rowButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomColor: COLORS.textSecondary,
+    borderBottomWidth: 1,
+  },
+  rowButtonDesc: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 10,
+  },
+  rowButtonDate: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rowIconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#1f2937",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  rowLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  rowValue: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+  },
+
+  addPropertyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  addPropertyRowDoc: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingLeft: 8,
+  },
+  addPropertyText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: "500",
+  },
+
+  divider: {
+    height: 10,
+    backgroundColor: COLORS.textSecondary,
+    marginVertical: 8,
+    marginHorizontal: -26,
+    alignSelf: "stretch",
+  },
+
+  descriptionPlaceholder: {
+    paddingTop: 2,
+    color: COLORS.textMuted,
+    fontSize: 13,
+  },
+
+  /* Activity tab container */
+  activityContainer: {
+    flex: 1,
+  },
+  activityScroll: {
+    flex: 1,
+  },
+  activityScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 80, // space for comment bar
+  },
+  activityCard: {
+    backgroundColor: "#111827",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  activitySystemText: {
+    color: "#f9fafb",
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  activityStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  activityStatusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "#020617",
+  },
+  activityStatusChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  activityTimestampSmall: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  /* Comment item */
+  activityCommentBlock: {
+    marginBottom: 16,
+  },
+  activityCommentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  activityAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.textSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  activityAvatarInitial: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  activityCommentTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  activityAuthor: {
+    color: COLORS.textSecondary,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  activityTimestamp: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+  },
+  activityCommentText: {
+    marginLeft: 40,
+    color: COLORS.textPrimary,
+    fontSize: 13,
+  },
+
+  /* Comment bar at bottom */
+  commentBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.textMuted,
+    backgroundColor: "#000",
+  },
+  commentPlusWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.textMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  commentInput: {
+    flex: 1,
+    minHeight: 36,
+    maxHeight: 80,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#111827",
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginRight: 8,
+  },
+
+  /* Modal styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "white",
+    paddingTop: 20,
+    paddingHorizontal: 16,
+  },
+  modelBlur: {
+    backgroundColor: "rgba(255,255,255,0.3)",
+    height: 80,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  modalTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: COLORS.textSecondary,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalDoneText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalSearchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#111827",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 38,
+    marginBottom: 12,
+  },
+  modalSearchInput: {
+    flex: 1,
+    marginLeft: 6,
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  modalTabsRow: {
+    flexDirection: "row",
+    borderBottomColor: "#27272a",
+    borderBottomWidth: 1,
+    marginBottom: 8,
+  },
+  modalTabItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  modalTabTextActive: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalTabTextInactive: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+  },
+  modalTabIndicator: {
+    marginTop: 4,
+    height: 2,
+    width: "100%",
+    backgroundColor: COLORS.textSecondary,
+  },
+  modalScroll: {
+    marginTop: 8,
+  },
+  modalSectionHeading: {
+    color: COLORS.textPrimary,
+    fontSize: 13,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  modalDividerThin: {
+    height: 1,
+    backgroundColor: "#27272a",
+    marginVertical: 8,
+  },
+
+  /* Status rows inside modal */
+  statusRowItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statusRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  statusCircleIdle: {
+    borderColor: COLORS.textMuted,
+  },
+  statusCircleActive: {
+    borderColor: COLORS.primary,
+  },
+  statusCircleTodo: {
+    borderStyle: "dashed",
+  },
+  statusCircleInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+  },
+  statusCircleComplete: {
+    borderWidth: 0,
+    backgroundColor: "#22c55e",
+  },
+  statusRowLabel: {
+    color: COLORS.textPrimary,
+    fontSize: 14,
+  },
+  statusRowLabelSelected: {
+    color: COLORS.textSecondary,
+    fontWeight: "700",
+  },
+
+  /* Task type rows */
+  taskTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#27272a",
+  },
+  taskTypeLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  taskTypeLabel: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+  },
+  taskTypeComingSoonText: {
+    marginTop: 2,
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+
+  /* Inline Add Property menu box */
+  propertyInlineCard: {
+    marginTop: 8,
+    backgroundColor: COLORS.textMuted,
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  propertyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#27272a",
+  },
+  propertyItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  propertyItemLabel: {
+    marginLeft: 8,
+    color: "#ffffff",
+    fontSize: 13,
+  },
+  propertyAddSubtaskRow: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  propertyAddSubtaskText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+});
