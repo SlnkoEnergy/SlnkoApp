@@ -11,7 +11,7 @@ import {
 import React, { useRef, useState } from 'react';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
-import { useTheme } from '@react-navigation/native';
+import { useNavigation, useTheme } from '@react-navigation/native';
 import { GlobalStyleSheet } from '../../constants/StyleSheet';
 import { TouchableOpacity } from 'react-native';
 import { IMAGES } from '../../constants/Images';
@@ -26,6 +26,8 @@ import CustomInput from '../../components/Input/CustomInput';
 import Button from '../../components/Button/Button';
 import { Modal } from 'react-native';
 import { FlatList } from 'react-native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { DrawerParamList } from '../../Navigations/DrawerParamList';
 
 const Usercards = [
   {
@@ -134,7 +136,8 @@ type EstimatesScreenProps = StackScreenProps<RootStackParamList, 'Estimates'>;
 const Estimates = ({ navigation }: EstimatesScreenProps) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
-
+ const drawerNavigation =
+    useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const refRBSheet = useRef<any>(null);
 
   const [showSearch, setShowSearch] = useState(false);
@@ -201,7 +204,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
           ]}
         >
           <TouchableOpacity
-            onPress={() => navigation.openDrawer()}
+             onPress={() => drawerNavigation.openDrawer()}
             style={{ flex: 1 }}
           >
             <Image
@@ -214,38 +217,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
               source={IMAGES.menu}
             />
           </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.5}
-            style={{
-              height: 30,
-              padding: 8,
-              borderRadius: 6,
-              backgroundColor: '#FFB743',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              marginRight: 40,
-            }}
-          >
-            <Image
-              style={{
-                height: 15,
-                width: 15,
-              }}
-              resizeMode="contain"
-              source={IMAGES.crown}
-            />
-            <Text
-              style={{
-                ...FONTS.fontMedium,
-                fontSize: 12,
-                color: colors.title,
-                lineHeight: 14,
-              }}
-            >
-              Upgrade
-            </Text>
-          </TouchableOpacity>
+
           <TouchableOpacity
             activeOpacity={0.5}
             onPress={() => navigation.navigate('Notification')}
@@ -315,7 +287,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                   { fontSize: 18, color: colors.title },
                 ]}
               >
-                W3itexperts
+                Add New Payments
               </Text>
               <View style={{ marginBottom: 20, marginTop: 30 }}>
                 <Text
@@ -326,7 +298,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                     marginBottom: 10,
                   }}
                 >
-                  Estimates Name
+                  Projects Name
                 </Text>
                 <CustomInput
                   inputBorder
@@ -352,7 +324,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                 />
               </View>
               <Button
-                title="Create Estimates"
+                title="Create Payments"
                 onPress={() => refRBSheet.current.close()}
               />
             </View>
@@ -408,7 +380,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                       marginBottom: 5,
                     }}
                   >
-                    ESTIMATES
+                    Payments
                   </Text>
                   <Text
                     style={{
@@ -417,7 +389,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                       color: colors.text,
                     }}
                   >
-                    Generate and track project estimates easily
+                    Generate and track payments records easily
                   </Text>
                 </View>
                 <View style={[GlobalStyleSheet.col33, { width: '40%' }]}>
@@ -568,7 +540,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
                       lineHeight: 16,
                     }}
                   >
-                    New Estimates
+                    New Payments
                   </Text>
                 </TouchableOpacity>
                 {showSearch && (

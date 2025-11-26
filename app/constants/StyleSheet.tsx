@@ -155,6 +155,7 @@ export const GlobalStyleSheet = StyleSheet.create({
     width: 500,
     height: 250,
     // marginBottom: 2,
+    marginLeft: "-16%"
   },
   inputWrapper: {
     flexDirection: "row",
@@ -265,6 +266,7 @@ glassFab: {
     fontWeight: "600",
     marginTop: 18,
     textDecorationLine: "underline",
+    marginLeft: "auto",
   },
 
   footer: {
@@ -275,12 +277,12 @@ glassFab: {
   poweredBy: {
     color: "#6c7a96",
     fontSize: 14,
+    marginTop:-50
   },
 
   footerLogo: {
     width: 120,
     height: 50,
-    marginTop: 3,
   },
 
   dialog: {

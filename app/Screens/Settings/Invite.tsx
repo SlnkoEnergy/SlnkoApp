@@ -37,7 +37,7 @@ const Invite = ({ navigation } : InviteScreenProps) => {
                                 alignItems:'center'
                             }}
                         >
-                            <Text style={{...FONTS.fontMedium,fontSize:20,color:colors.title,marginBottom:20}}>Invite Your Friends To use sitemaster</Text>
+                            <Text style={{...FONTS.fontMedium,fontSize:20,color:colors.title,marginBottom:20}}>Invite Your Friends To use Protrac</Text>
                             <Text
                                 style={[FONTS.font,{color:colors.text,textAlign:'center',paddingHorizontal:35,lineHeight:20}]}
                             >
