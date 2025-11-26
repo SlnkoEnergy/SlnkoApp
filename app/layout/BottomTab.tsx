@@ -87,15 +87,15 @@ const BottomTab: React.FC<Props> = ({ state, descriptors, navigation }) => {
     );
 
     const handleTabPress = (route: any, index: number, label: string, isFocused: boolean) => {
-        if (label === "Company") {
-            bottomSheetRef.current?.snapToIndex(0); // open company sheet
-            return;
-        }
+        // if (label === "Company") {
+        //     bottomSheetRef.current?.snapToIndex(0); // open company sheet
+        //     return;
+        // }
 
-        if (label === "Messages") {
-            navigation.navigate("Messages");
-            return;
-        }
+        // if (label === "Messages") {
+        //     navigation.navigate("Messages");
+        //     return;
+        // }
 
         const event = navigation.emit({
             type: "tabPress",
