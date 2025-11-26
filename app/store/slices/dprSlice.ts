@@ -1,11 +1,15 @@
-// src/store/dprSlice.ts
+
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Config from "react-native-config";
 
+
 export interface DprItem {
   _id: string;
-  project_id?: string;
+  activity_id?: { _id: string; name: string };
+  project_id?: { _id: string; name?: string; code?: string };
+  percent_complete?: number; // e.g. 80
+  work_completion?: { unit?: "percentage" | string; value?: number };
   [key: string]: any;
 }
 
@@ -14,7 +18,6 @@ export interface GetAllDprResponse {
   total?: number;
   page?: number;
   limit?: number;
-  [key: string]: any;
 }
 
 export interface GetAllDprArgs {
@@ -22,12 +25,6 @@ export interface GetAllDprArgs {
   limit?: number;
   search?: string;
   projectId?: string;
-  from?: string;
-  to?: string;
-  onlyWithDeadline?: string | boolean;
-  status?: string;
-  category?: string;
-  hide_status?: string;
 }
 
 export interface UpdateDprLogArgs {
@@ -39,79 +36,39 @@ export interface UpdateDprLogArgs {
   status: string;
 }
 
-const baseUrl = (Config.API_URL || '').replace(/\/+$/, '');
+const baseUrl = (Config.API_URL || "").replace(/\/+$/, "");
 
 export const dprSlice = createApi({
   reducerPath: "dprSlice",
-
-  // 🔥 Add token automatically for ALL DPR APIs
   baseQuery: fetchBaseQuery({
     baseUrl,
     prepareHeaders: async (headers) => {
       const token = await AsyncStorage.getItem("authToken");
-      if (token) {
-        headers.set("x-auth-token", token);
-      }
+      if (token) headers.set("x-auth-token", token);
       return headers;
     },
   }),
-
   tagTypes: ["Project"],
 
   endpoints: (builder) => ({
     getAllDpr: builder.query<GetAllDprResponse, GetAllDprArgs>({
-      query: ({
-        page = 1,
-        limit = 10,
-        search = "",
-        projectId,
-        from,
-        to,
-        onlyWithDeadline,
-        status,
-        category,
-        hide_status,
-      }) => {
+      query: ({ page = 1, limit = 10, search = "", projectId } = {}) => {
         const params = new URLSearchParams();
-
         params.set("page", String(page));
         params.set("limit", String(limit));
-
-        if (projectId) params.set("projectId", projectId);
         if (search) params.set("search", search);
-        if (from) params.set("from", from);
-        if (to) params.set("to", to);
-        if (onlyWithDeadline)
-          params.set("onlyWithDeadline", String(onlyWithDeadline));
-        if (status) params.set("status", status);
-        if (category) params.set("category", category);
-        if (hide_status) params.set("hide_status", hide_status);
+        if (projectId) params.set("projectId", projectId);
 
-        return {
-          url: `projectActivity/alldpr?${params.toString()}`,
-          method: "GET",
-        };
+        return { url: `dpr/dpr?${params.toString()}`, method: "GET" };
       },
       providesTags: ["Project"],
     }),
 
     updateDprLog: builder.mutation<any, UpdateDprLogArgs>({
-      query: ({
-        projectId,
-        activityId,
-        todays_progress,
-        date,
-        remarks,
-        status,
-      }) => ({
+      query: ({ projectId, activityId, todays_progress, date, remarks, status }) => ({
         url: `projectactivity/${projectId}/updateDprLog/${activityId}`,
-        method: "PATCH",
-        body: {
-          todays_progress,
-          date,
-          remarks,
-          status,
-        },
+        method: "PUT",
+        body: { todays_progress, date, remarks, status },
       }),
       invalidatesTags: ["Project"],
     }),

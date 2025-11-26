@@ -218,6 +218,45 @@ export const GlobalStyleSheet = StyleSheet.create({
     shadowRadius: 12,
   },
 
+  glassChip: {
+  backgroundColor: 'rgba(255,255,255,0.55)',
+  borderRadius: 14,
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.8)',
+  shadowColor: '#003366',
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  elevation: 2,
+},
+
+glassCard: {
+  backgroundColor: 'rgba(255,255,255,0.45)',
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.7)',
+  shadowColor: '#003366',
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  elevation: 3,
+},
+glassBadge: {
+  paddingHorizontal: 5,
+  // paddingVertical: 6,
+  borderRadius: 12,
+  backgroundColor: 'rgba(255,255,255,0.75)',
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.9)',
+},
+glassFab: {
+  height: 36,
+  width: 36,
+  borderRadius: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'rgba(255,255,255,0.8)',
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.95)',
+},
+
 
 
   forgotText: {
