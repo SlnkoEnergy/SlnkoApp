@@ -1,4 +1,4 @@
-package com.sitemaster
+package com.slnko.protrac;
 
 import android.app.Application
 import com.facebook.react.PackageList
