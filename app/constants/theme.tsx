@@ -2,7 +2,15 @@ import { Dimensions } from "react-native";
 const { width, height } = Dimensions.get('screen');
 
 export const COLORS = {
-	primary: "#003366", 
+
+	surfaceAlt: "#F3F5FA",
+	accentSoft: "rgba(0, 51, 102, 0.06)",
+
+	// chip backgrounds
+	chipBgSuccess: "rgba(65, 154, 144, 0.10)",
+	chipBgInfo: "rgba(43, 57, 185, 0.10)",
+	chipBgNeutral: "rgba(124, 139, 163, 0.12)",
+	primary: "#003366",
 	primaryLight: "rgba(38,72,231,0.15)",
 	secondary: "#74AA47",
 	success: "#419A90",
@@ -23,21 +31,30 @@ export const COLORS = {
 	textLight: "rgba(10,16,31,0.5)",
 	title: "#0A101F",
 	borderColor: "#E8E8E8",
-	checkBoxborderColor:"#D8DFEF",
+	checkBoxborderColor: "#D8DFEF",
 	input: "#E8F0FB",
 	placeholder: 'rgba(0, 0, 0, 0.50)',
-	
+
 	//dark theme
 	darkCard: "#0A101F",
 	darkBackground: "#0C101C",
 	darkText: "#B8B8B8",
 	darkTextLight: "#6C6E77",
 	darkTitle: "#fff",
-	darkcheckBoxborderColor:"#D8DFEF",
+	darkcheckBoxborderColor: "#D8DFEF",
 	darkBorder: "rgba(255,255,255,0.30)",
 	darkInput: "#151A28",
 	darkborderColor: "rgba(255, 255, 255, .1)",
 	darkPlaceholder: "rgba(255,255,255,.5)",
+
+	// text theme
+
+	textPrimary: "#0D1B2A",
+	textSecondary: "#4B5B70",
+	textMuted: "#7C8BA3",
+	textOnPrimary: "#FFFFFF",
+	textOnSecondary: "#FFFFFF",
+	textOnDark: "#FFFFFF",
 
 }
 
@@ -102,6 +119,6 @@ export const ICONS = {
 	email: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 6L12 13L2 6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
 }
 
-const appTheme = { COLORS, SIZES, FONTS,}
+const appTheme = { COLORS, SIZES, FONTS, }
 
 export default appTheme;

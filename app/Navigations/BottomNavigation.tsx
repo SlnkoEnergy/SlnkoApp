@@ -7,6 +7,7 @@ import Estimates from '../Screens/Estimates/Estimates';
 import Project from '../Screens/Project/Project';
 import Company from '../Screens/Company/Company';
 import Contacts from '../Screens/Contacts/Contacts';
+import MyTask from "../Screens/MyTasks/MyTask";
 
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
@@ -17,29 +18,29 @@ const BottomNavigation = () => {
         <Tab.Navigator
             initialRouteName='Estimates'
             screenOptions={{
-                headerShown : false
+                headerShown: false
             }}
-            tabBar={(props:any) => <BottomTab {...props}/>}
+            tabBar={(props: any) => <BottomTab {...props} />}
         >
-            <Tab.Screen 
-                name="Estimates" 
-                component={Estimates} 
+            <Tab.Screen
+                name="Estimates"
+                component={Estimates}
             />
-            <Tab.Screen 
-                name="Project" 
-                component={Project} 
+            <Tab.Screen
+                name="Project"
+                component={Project}
             />
-            <Tab.Screen 
-                name="Company" 
-                component={Company} 
+            <Tab.Screen
+                name="Company"
+                component={Company}
             />
-            <Tab.Screen 
-                name="Contacts" 
-                component={Contacts} 
+            <Tab.Screen
+                name="Contacts"
+                component={Contacts}
             />
-            <Tab.Screen 
-                name="Messages" 
-                component={Messages} 
+            <Tab.Screen
+                name="My Task"
+                component={MyTask}
             />
         </Tab.Navigator>
     );
