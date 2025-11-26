@@ -57,16 +57,16 @@ const Project = ({ navigation }: ProjectScreenProps) => {
   const { colors }: { colors: any } = theme;
   const drawerNavigation =
     useNavigation<DrawerNavigationProp<DrawerParamList>>();
-    const directMessages: DM[] = useMemo(() => {
-  const demo: DM[] = [
-    { id: "dm-1", name: "Rahul", lastMessage: "Let’s sync at 4pm", updatedAt: new Date().toISOString(), badgeCount: 2, iconBg: "#7C3AED22" },
-    { id: "dm-2", name: "Gagan", lastMessage: "PO approved ✅",     updatedAt: "2025-11-24T10:20:00Z",  badgeCount: 0, iconBg: "#0EA5E922" },
-  ];
-  return demo.sort(
-    (a, b) =>
-      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
-  );
-}, []);
+  const directMessages: DM[] = useMemo(() => {
+    const demo: DM[] = [
+      { id: "dm-1", name: "Rahul", lastMessage: "Let’s sync at 4pm", updatedAt: new Date().toISOString(), badgeCount: 2, iconBg: "#7C3AED22" },
+      { id: "dm-2", name: "Gagan", lastMessage: "PO approved ✅", updatedAt: "2025-11-24T10:20:00Z", badgeCount: 0, iconBg: "#0EA5E922" },
+    ];
+    return demo.sort(
+      (a, b) =>
+        new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+    );
+  }, []);
 
   const [showSearch, setShowSearch] = useState(false);
   const translateX = useRef(new Animated.Value(-300)).current;
@@ -115,7 +115,7 @@ const Project = ({ navigation }: ProjectScreenProps) => {
   });
 
   // console.log("apiRes:", apiRes);
-  
+
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -145,35 +145,36 @@ const Project = ({ navigation }: ProjectScreenProps) => {
 
   const IMAGE = IMAGES.projectpic7;
 
-const cards = useMemo(() => {
-  const list = apiRes?.data ?? [];
+  const cards = useMemo(() => {
+    const list = apiRes?.data ?? [];
 
-  return list.map((item: any) => {
-    let progress = 0;
-    if (typeof item?.percent_complete === 'number') {
-      progress = Math.max(0, Math.min(1, item.percent_complete / 100));
-    } else if (item?.work_completion?.unit === 'percentage') {
-      const v = Number(item?.work_completion?.value ?? 0);
-      progress = Math.max(0, Math.min(1, v / 100));
-    }
+    return list.map((item: any) => {
+      let progress = 0;
+      if (typeof item?.percent_complete === 'number') {
+        progress = Math.max(0, Math.min(1, item.percent_complete / 100));
+      } else if (item?.work_completion?.unit === 'percentage') {
+        const v = Number(item?.work_completion?.value ?? 0);
+        progress = Math.max(0, Math.min(1, v / 100));
+      }
 
-    const title =
-      item?.activity_id?.name ||
-      item?.activity_id ||
-      '-';
+      const title =
+        item?.activity_id?.name ||
+        item?.activity_id ||
+        '-';
 
-    const code = item?.project_id?.code || '';
+      const code = item?.project_id?.code || '';
 
-    return {
-      title,        
-      code,          
-      progress,       
-      view: 'grid',
-      images: [IMAGE],
-      _raw: item,
-    };
-  });
-}, [apiRes]);
+      return {
+        title,
+        code,
+        progress,
+        view: 'grid',
+        images: [IMAGE],
+        _raw: item,
+      };
+    });
+  }, [apiRes]);
+
 
   const StatChip = ({
     icon,
@@ -226,139 +227,139 @@ const cards = useMemo(() => {
     </View>
   );
 
-const ImageProjectCard = ({
-  data,
-  colors,
-  onPress,
-}: {
-  data: any;
-  colors: any;
-  onPress: () => void;
-}) => {
-  const cover = data?.images?.[0];
+  const ImageProjectCard = ({
+    data,
+    colors,
+    onPress,
+  }: {
+    data: any;
+    colors: any;
+    onPress: () => void;
+  }) => {
+    const cover = data?.images?.[0];
 
-  // animate progress (0..1) -> width + chip pop
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const chipScale = useRef(new Animated.Value(0.9)).current;
-  const chipOpacity = useRef(new Animated.Value(0.0)).current;
+    // animate progress (0..1) -> width + chip pop
+    const progressAnim = useRef(new Animated.Value(0)).current;
+    const chipScale = useRef(new Animated.Value(0.9)).current;
+    const chipOpacity = useRef(new Animated.Value(0.0)).current;
 
-  useEffect(() => {
-    const to = typeof data?.progress === 'number' ? Math.max(0, Math.min(1, data.progress)) : 0;
-    Animated.parallel([
-      Animated.timing(progressAnim, { toValue: to, duration: 600, useNativeDriver: false }),
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(chipOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
-          Animated.timing(chipScale, { toValue: 1.03, duration: 180, useNativeDriver: true }),
+    useEffect(() => {
+      const to = typeof data?.progress === 'number' ? Math.max(0, Math.min(1, data.progress)) : 0;
+      Animated.parallel([
+        Animated.timing(progressAnim, { toValue: to, duration: 600, useNativeDriver: false }),
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(chipOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+            Animated.timing(chipScale, { toValue: 1.03, duration: 180, useNativeDriver: true }),
+          ]),
+          Animated.timing(chipScale, { toValue: 1, duration: 140, useNativeDriver: true }),
         ]),
-        Animated.timing(chipScale, { toValue: 1, duration: 140, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, [data?.progress, progressAnim, chipScale, chipOpacity]);
+      ]).start();
+    }, [data?.progress, progressAnim, chipScale, chipOpacity]);
 
-  const barWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+    const barWidth = progressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0%', '100%'],
+    });
 
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={{
-        backgroundColor: 'transparent',
-        borderRadius: 14,
-        overflow: 'hidden',
-        marginBottom: 14,
-      }}
-    >
-      <View
-        style={[
-          {
-            borderRadius: 14,
-            overflow: 'hidden',
-            position: 'relative',
-          },
-          GlobalStyleSheet.glassCard,
-        ]}
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onPress}
+        style={{
+          backgroundColor: 'transparent',
+          borderRadius: 14,
+          overflow: 'hidden',
+          marginBottom: 14,
+        }}
       >
-        <ImageBackground source={cover} resizeMode="cover" style={{ width: '100%', aspectRatio: 1 / 0.6 }}>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.35)']}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={[GlobalStyleSheet.glassBadge, { position: 'absolute', top: 10, left: 10 }]}>
-            <Text
-              numberOfLines={1}
-              style={{ ...FONTS.fontMedium, fontSize: 12, color: colors.title, opacity: 0.95 }}
-            >
-              {data?.code}
-            </Text>
-          </View>
-
-          {/* Floating arrow */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[GlobalStyleSheet.glassFab, { position: 'absolute', top: 10, right: 10 }]}
-          >
-            <FeatherIcon name="arrow-right" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
-
-          <View style={{ position: 'absolute', left: 12, bottom: 20, right: 92 }}>
-            <Text numberOfLines={1} style={{ ...FONTS.fontMedium, fontSize: 15, color: '#fff' }}>
-              {data?.title}
-            </Text>
-          </View>
-
-          <Animated.View
-            style={[
-              GlobalStyleSheet.glassBadge,
-              {
-                position: 'absolute',
-                right: 12,
-                bottom: 20,
-                transform: [{ scale: chipScale }],
-                opacity: chipOpacity,
-              },
-            ]}
-          >
-            <Text style={{ ...FONTS.fontMedium, fontSize: 12, color: COLORS.primary }}>
-              {Math.round((data?.progress ?? 0) * 100)}%
-            </Text>
-          </Animated.View>
-
-          <View
-            style={{
-              position: 'absolute',
-              left: 10,
-              right: 10,
-              bottom: 12,
-              height: 5,
-              borderRadius: 3,
-              backgroundColor: 'rgba(255,255,255,0.30)',
+        <View
+          style={[
+            {
+              borderRadius: 14,
               overflow: 'hidden',
-            }}
-          >
-            <Animated.View
-              style={{
-                height: '100%',
-                width: barWidth,
-                borderRadius: 3,
-                backgroundColor: COLORS.primary,
-              }}
+              position: 'relative',
+            },
+            GlobalStyleSheet.glassCard,
+          ]}
+        >
+          <ImageBackground source={cover} resizeMode="cover" style={{ width: '100%', aspectRatio: 1 / 0.6 }}>
+            <LinearGradient
+              colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.35)']}
+              style={StyleSheet.absoluteFill}
             />
-          </View>
-        </ImageBackground>
-      </View>
-    </TouchableOpacity>
-  );
-};
+            <View style={[GlobalStyleSheet.glassBadge, { position: 'absolute', top: 10, left: 10 }]}>
+              <Text
+                numberOfLines={1}
+                style={{ ...FONTS.fontMedium, fontSize: 12, color: colors.title, opacity: 0.95 }}
+              >
+                {data?.code}
+              </Text>
+            </View>
 
-const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => ({
-  id: t._id,
-  title: `${t?.project_id?.name ?? 'Project'} • ${(t?.activity_id?.name || t?.activity_id) ?? 'Activity'}`,
-  updatedAt: t.updatedAt,
-}));
+            {/* Floating arrow */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[GlobalStyleSheet.glassFab, { position: 'absolute', top: 10, right: 10 }]}
+            >
+              <FeatherIcon name="arrow-right" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            <View style={{ position: 'absolute', left: 12, bottom: 20, right: 92 }}>
+              <Text numberOfLines={1} style={{ ...FONTS.fontMedium, fontSize: 15, color: '#fff' }}>
+                {data?.title}
+              </Text>
+            </View>
+
+            <Animated.View
+              style={[
+                GlobalStyleSheet.glassBadge,
+                {
+                  position: 'absolute',
+                  right: 12,
+                  bottom: 20,
+                  transform: [{ scale: chipScale }],
+                  opacity: chipOpacity,
+                },
+              ]}
+            >
+              <Text style={{ ...FONTS.fontMedium, fontSize: 12, color: COLORS.primary }}>
+                {Math.round((data?.progress ?? 0) * 100)}%
+              </Text>
+            </Animated.View>
+
+            <View
+              style={{
+                position: 'absolute',
+                left: 10,
+                right: 10,
+                bottom: 12,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: 'rgba(255,255,255,0.30)',
+                overflow: 'hidden',
+              }}
+            >
+              <Animated.View
+                style={{
+                  height: '100%',
+                  width: barWidth,
+                  borderRadius: 3,
+                  backgroundColor: COLORS.primary,
+                }}
+              />
+            </View>
+          </ImageBackground>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => ({
+    id: t._id,
+    title: `${t?.project_id?.name ?? 'Project'} • ${(t?.activity_id?.name || t?.activity_id) ?? 'Activity'}`,
+    updatedAt: t.updatedAt,
+  }));
 
 
 
@@ -368,281 +369,281 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => ({
       style={{ backgroundColor: colors.background, flex: 1, marginBottom: 0 }}
     >
       <StatusBar backgroundColor={colors.background} />
-    <View style={[GlobalStyleSheet.container, { padding: 0 }]}>
-  {/* Top app bar */}
-  <View
-    style={[
-      GlobalStyleSheet.flexcenter,
-      {
-        height: 60,
-        zIndex: 11,
-        backgroundColor: colors.background,
-        paddingHorizontal: 20,
-      },
-    ]}
-  >
-    <TouchableOpacity onPress={() => drawerNavigation.openDrawer()} style={{ flex: 1 }}>
-      <Image style={{ height: 16, width: 24 }} tintColor={colors.title} resizeMode="contain" source={IMAGES.menu} />
-    </TouchableOpacity>
-
-    <TouchableOpacity
-      activeOpacity={0.5}
-      onPress={() => navigation.navigate('Notification')}
-      style={{
-        padding: 5,
-        height: 40,
-        width: 40,
-        borderRadius: 30,
-        backgroundColor: 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'absolute',
-        right: 15,
-      }}
-    >
-      <FeatherIcon name="bell" color={colors.text} size={20} />
-      <View
-        style={{
-          height: 10,
-          width: 10,
-          borderRadius: 5,
-          backgroundColor: '#EA4230',
-          borderWidth: 2,
-          borderColor: colors.card,
-          position: 'absolute',
-          right: 10,
-          top: 10,
-        }}
-      />
-    </TouchableOpacity>
-  </View>
-
-  {/* Scrollable content (everything below the app bar) */}
-  <Animated.ScrollView
-    showsVerticalScrollIndicator={false}
-    contentContainerStyle={{ paddingBottom: 24 }}
-    scrollEventThrottle={16}
-    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
-  >
-    {/* Filter row (All + search + +Project) */}
-    <View style={[GlobalStyleSheet.flexcenter, { paddingHorizontal: 20, marginBottom: 10 }]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-        <View>
-          <TouchableOpacity
-            onPress={toggleDropdown}
-            activeOpacity={0.5}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
-          >
-            <Text style={[FONTS.fontLg, { color: colors.title }]}>{selected}</Text>
-            <FeatherIcon size={16} color={colors.text} name={isOpen ? 'chevron-up' : 'chevron-down'} />
+      <View style={[GlobalStyleSheet.container, { padding: 0 }]}>
+        {/* Top app bar */}
+        <View
+          style={[
+            GlobalStyleSheet.flexcenter,
+            {
+              height: 60,
+              zIndex: 11,
+              backgroundColor: colors.background,
+              paddingHorizontal: 20,
+            },
+          ]}
+        >
+          <TouchableOpacity onPress={() => drawerNavigation.openDrawer()} style={{ flex: 1 }}>
+            <Image style={{ height: 16, width: 24 }} tintColor={colors.title} resizeMode="contain" source={IMAGES.menu} />
           </TouchableOpacity>
 
-          {/* Dropdown */}
-          <Animated.View
+          <TouchableOpacity
+            activeOpacity={0.5}
+            onPress={() => navigation.navigate('Notification')}
             style={{
-              width: 200,
-              height: heightInterpolate,
+              padding: 5,
+              height: 40,
+              width: 40,
+              borderRadius: 30,
+              backgroundColor: 'transparent',
+              alignItems: 'center',
+              justifyContent: 'center',
               position: 'absolute',
-              top: 40,
-              zIndex: 99,
-              overflow: 'hidden',
-              backgroundColor: colors.card,
-              borderRadius: 8,
-              elevation: 5,
+              right: 15,
             }}
           >
-            <FlatList
-              data={DROPDOWN_OPTIONS}
-              keyExtractor={(item) => item}
-              renderItem={({ item }: any) => (
+            <FeatherIcon name="bell" color={colors.text} size={20} />
+            <View
+              style={{
+                height: 10,
+                width: 10,
+                borderRadius: 5,
+                backgroundColor: '#EA4230',
+                borderWidth: 2,
+                borderColor: colors.card,
+                position: 'absolute',
+                right: 10,
+                top: 10,
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Scrollable content (everything below the app bar) */}
+        <Animated.ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          scrollEventThrottle={16}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        >
+          {/* Filter row (All + search + +Project) */}
+          <View style={[GlobalStyleSheet.flexcenter, { paddingHorizontal: 20, marginBottom: 10 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+              <View>
                 <TouchableOpacity
-                  onPress={() => handleSelect(item)}
+                  onPress={toggleDropdown}
+                  activeOpacity={0.5}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+                >
+                  <Text style={[FONTS.fontLg, { color: colors.title }]}>{selected}</Text>
+                  <FeatherIcon size={16} color={colors.text} name={isOpen ? 'chevron-up' : 'chevron-down'} />
+                </TouchableOpacity>
+
+                {/* Dropdown */}
+                <Animated.View
                   style={{
-                    paddingVertical: 6,
-                    paddingHorizontal: 20,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
+                    width: 200,
+                    height: heightInterpolate,
+                    position: 'absolute',
+                    top: 40,
+                    zIndex: 99,
+                    overflow: 'hidden',
+                    backgroundColor: colors.card,
+                    borderRadius: 8,
+                    elevation: 5,
                   }}
                 >
-                  <View
-                    style={[
-                      {
-                        height: 8,
-                        width: 8,
-                        borderRadius: 4,
-                        backgroundColor: colors.text,
-                      },
-                      item === 'Ongoing' && { backgroundColor: '#419A90' },
-                      item === 'Completed' && { backgroundColor: '#6A38FF' },
-                      item === 'On Hold' && { backgroundColor: '#E8B73D' },
-                      item === 'Not Started' && { backgroundColor: '#DD1951' },
-                    ]}
+                  <FlatList
+                    data={DROPDOWN_OPTIONS}
+                    keyExtractor={(item) => item}
+                    renderItem={({ item }: any) => (
+                      <TouchableOpacity
+                        onPress={() => handleSelect(item)}
+                        style={{
+                          paddingVertical: 6,
+                          paddingHorizontal: 20,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <View
+                          style={[
+                            {
+                              height: 8,
+                              width: 8,
+                              borderRadius: 4,
+                              backgroundColor: colors.text,
+                            },
+                            item === 'Ongoing' && { backgroundColor: '#419A90' },
+                            item === 'Completed' && { backgroundColor: '#6A38FF' },
+                            item === 'On Hold' && { backgroundColor: '#E8B73D' },
+                            item === 'Not Started' && { backgroundColor: '#DD1951' },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            FONTS.font,
+                            FONTS.fontMedium,
+                            { color: colors.text },
+                            item === 'Ongoing' && { color: '#419A90' },
+                            item === 'Completed' && { color: '#6A38FF' },
+                            item === 'On Hold' && { color: '#E8B73D' },
+                            item === 'Not Started' && { color: '#DD1951' },
+                          ]}
+                        >
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   />
-                  <Text
-                    style={[
-                      FONTS.font,
-                      FONTS.fontMedium,
-                      { color: colors.text },
-                      item === 'Ongoing' && { color: '#419A90' },
-                      item === 'Completed' && { color: '#6A38FF' },
-                      item === 'On Hold' && { color: '#E8B73D' },
-                      item === 'Not Started' && { color: '#DD1951' },
-                    ]}
-                  >
-                    {item}
-                  </Text>
+                </Animated.View>
+              </View>
+
+              <TouchableOpacity onPress={openSearchBar} activeOpacity={0.5}>
+                <FeatherIcon color={COLORS.primary} size={16} name="search" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity onPress={() => navigation.navigate('CreateProject')} activeOpacity={0.5} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <FeatherIcon color={COLORS.primary} size={16} name="plus" />
+              <Text style={{ ...FONTS.fontMedium, fontSize: 15, color: COLORS.primary, lineHeight: 20 }}>Project</Text>
+            </TouchableOpacity>
+
+            {showSearch && (
+              <Animated.View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  height: 40,
+                  width: '65%',
+                  position: 'absolute',
+                  left: 15,
+                  transform: [{ translateX }],
+                }}
+              >
+                <TextInput
+                  placeholder="Search..."
+                  style={[FONTS.font, FONTS.fontMedium, { color: colors.title, flex: 1 }]}
+                  placeholderTextColor={colors.placeholder}
+                  multiline
+                />
+                <TouchableOpacity onPress={closeSearchBar}>
+                  <FeatherIcon name="x" size={20} color={colors.text} />
                 </TouchableOpacity>
+              </Animated.View>
+            )}
+          </View>
+
+          {/* Chips row */}
+          <Animated.View
+            style={{
+              paddingHorizontal: 20,
+              marginBottom: 12,
+              justifyContent: 'center',
+              transform: [{ translateY: chipRowTranslateY }, { scaleY: chipRowScaleY }],
+            }}
+          >
+            <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingRight: 8 }}>
+              {[
+                { icon: 'send', title: 'Drafts & Sent', subtitle: '0 comments' },
+                { icon: 'calendar', title: 'Today', subtitle: '0 items' },
+                { icon: 'clock', title: 'Upcoming', subtitle: '1 item' },
+                { icon: 'at-sign', title: 'Assigned', subtitle: '0 comments' },
+                { icon: 'activity', title: 'Activity', subtitle: '0' },
+              ].map((c, i) => (
+                <Animated.View key={c.title + i} style={{ transform: [{ scale: chipScale }], opacity: chipOpacity, marginRight: 10 }}>
+                  <StatChip icon={c.icon} title={c.title} subtitle={c.subtitle} colors={colors} />
+                </Animated.View>
+              ))}
+            </Animated.ScrollView>
+          </Animated.View>
+
+          {/* Horizontal Project cards right under “All” */}
+          <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+            <FlatList
+              horizontal
+              data={isFetching ? [] : cards}
+              keyExtractor={(_, i) => String(i)}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 15, paddingRight: 24 }}
+              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+              renderItem={({ item }) => (
+                <View style={{ width: 260 }}>
+                  <ImageProjectCard
+                    data={item}
+                    colors={colors}
+                    onPress={() => navigation.navigate('Company', { data: item })}
+                  />
+                </View>
               )}
             />
-          </Animated.View>
-        </View>
+          </View>
 
-        <TouchableOpacity onPress={openSearchBar} activeOpacity={0.5}>
-          <FeatherIcon color={COLORS.primary} size={16} name="search" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity onPress={() => navigation.navigate('CreateProject')} activeOpacity={0.5} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-        <FeatherIcon color={COLORS.primary} size={16} name="plus" />
-        <Text style={{ ...FONTS.fontMedium, fontSize: 15, color: COLORS.primary, lineHeight: 20 }}>Project</Text>
-      </TouchableOpacity>
-
-      {showSearch && (
-        <Animated.View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.background,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 8,
-            paddingHorizontal: 10,
-            height: 40,
-            width: '65%',
-            position: 'absolute',
-            left: 15,
-            transform: [{ translateX }],
-          }}
-        >
-          <TextInput
-            placeholder="Search..."
-            style={[FONTS.font, FONTS.fontMedium, { color: colors.title, flex: 1 }]}
-            placeholderTextColor={colors.placeholder}
-            multiline
-          />
-          <TouchableOpacity onPress={closeSearchBar}>
-            <FeatherIcon name="x" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-    </View>
-
-    {/* Chips row */}
-    <Animated.View
-      style={{
-        paddingHorizontal: 20,
-        marginBottom: 12,
-        justifyContent: 'center',
-        transform: [{ translateY: chipRowTranslateY }, { scaleY: chipRowScaleY }],
-      }}
-    >
-      <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingRight: 8 }}>
-        {[
-          { icon: 'send', title: 'Drafts & Sent', subtitle: '0 comments' },
-          { icon: 'calendar', title: 'Today', subtitle: '0 items' },
-          { icon: 'clock', title: 'Upcoming', subtitle: '1 item' },
-          { icon: 'at-sign', title: 'Assigned', subtitle: '0 comments' },
-          { icon: 'activity', title: 'Activity', subtitle: '0' },
-        ].map((c, i) => (
-          <Animated.View key={c.title + i} style={{ transform: [{ scale: chipScale }], opacity: chipOpacity, marginRight: 10 }}>
-            <StatChip icon={c.icon} title={c.title} subtitle={c.subtitle} colors={colors} />
-          </Animated.View>
-        ))}
-      </Animated.ScrollView>
-    </Animated.View>
-
-    {/* Horizontal Project cards right under “All” */}
-    <View style={{ paddingTop: 4, paddingBottom: 8 }}>
-      <FlatList
-        horizontal
-        data={isFetching ? [] : cards}
-        keyExtractor={(_, i) => String(i)}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 15, paddingRight: 24 }}
-        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-        renderItem={({ item }) => (
-          <View style={{ width: 260 }}>
-            <ImageProjectCard
-              data={item}
-              colors={colors}
-              onPress={() => navigation.navigate('ProjectDetails', { data: item })}
+          {/* Recents (vertical list) */}
+          <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+            <RecentTasks
+              tasks={recentData}
+              onPressTask={(t) => navigation.navigate('TaskDetails', { data: t })}
             />
           </View>
-        )}
-      />
-    </View>
+          {/* -------- Direct messages -------- */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Direct messages</Text>
+              <FeatherIcon name="chevron-down" size={18} color={colors.text} style={{ opacity: 0.6 }} />
+            </View>
 
-    {/* Recents (vertical list) */}
-    <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
-      <RecentTasks
-        tasks={recentData}
-        onPressTask={(t) => navigation.navigate('TaskDetails', { data: t })}
-      />
-    </View>
-    {/* -------- Direct messages -------- */}
-<View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
-  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Direct messages</Text>
-    <FeatherIcon name="chevron-down" size={18} color={colors.text} style={{ opacity: 0.6 }} />
-  </View>
+            {directMessages.map((dm) => (
+              <TouchableOpacity
+                key={dm.id}
+                activeOpacity={0.7}
+                style={{ paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 12 }}
+              // onPress={() => navigation.navigate("DMThread" as never, { data: dm } as never)}
+              >
+                <View
+                  style={{
+                    height: 28, width: 28, borderRadius: 14,
+                    alignItems: "center", justifyContent: "center",
+                    backgroundColor: dm.iconBg || "#7C3AED22",
+                  }}
+                >
+                  <FeatherIcon name="user" size={16} color={colors.text} />
+                </View>
 
-  {directMessages.map((dm) => (
-    <TouchableOpacity
-      key={dm.id}
-      activeOpacity={0.7}
-      style={{ paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 12 }}
-      // onPress={() => navigation.navigate("DMThread" as never, { data: dm } as never)}
-    >
-      <View
-        style={{
-          height: 28, width: 28, borderRadius: 14,
-          alignItems: "center", justifyContent: "center",
-          backgroundColor: dm.iconBg || "#7C3AED22",
-        }}
-      >
-        <FeatherIcon name="user" size={16} color={colors.text} />
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
+                    {dm.name}
+                  </Text>
+                  {!!dm.lastMessage && (
+                    <Text numberOfLines={1} style={{ color: colors.text, opacity: 0.6, marginTop: 2 }}>
+                      {dm.lastMessage}
+                    </Text>
+                  )}
+                </View>
+
+                {!!dm.badgeCount && dm.badgeCount > 0 && (
+                  <View
+                    style={{
+                      minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 6,
+                      backgroundColor: "#EA4230", alignItems: "center", justifyContent: "center", marginRight: 6,
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{dm.badgeCount}</Text>
+                  </View>
+                )}
+
+                <FeatherIcon name="chevron-right" size={18} color={colors.text} style={{ opacity: 0.35 }} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+        </Animated.ScrollView>
       </View>
-
-      <View style={{ flex: 1 }}>
-        <Text numberOfLines={1} style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
-          {dm.name}
-        </Text>
-        {!!dm.lastMessage && (
-          <Text numberOfLines={1} style={{ color: colors.text, opacity: 0.6, marginTop: 2 }}>
-            {dm.lastMessage}
-          </Text>
-        )}
-      </View>
-
-      {!!dm.badgeCount && dm.badgeCount > 0 && (
-        <View
-          style={{
-            minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 6,
-            backgroundColor: "#EA4230", alignItems: "center", justifyContent: "center", marginRight: 6,
-          }}
-        >
-          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{dm.badgeCount}</Text>
-        </View>
-      )}
-
-      <FeatherIcon name="chevron-right" size={18} color={colors.text} style={{ opacity: 0.35 }} />
-    </TouchableOpacity>
-  ))}
-</View>
-
-  </Animated.ScrollView>
-</View>
     </SafeAreaView>
   );
 };

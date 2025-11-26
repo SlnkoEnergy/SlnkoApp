@@ -64,15 +64,32 @@ export const dprSlice = createApi({
       providesTags: ["Project"],
     }),
 
-    updateDprLog: builder.mutation<any, UpdateDprLogArgs>({
-      query: ({ projectId, activityId, todays_progress, date, remarks, status }) => ({
-        url: `projectactivity/${projectId}/updateDprLog/${activityId}`,
-        method: "PUT",
-        body: { todays_progress, date, remarks, status },
+    updateDprLog: builder.mutation({
+      query: ({
+        projectId,
+        activityId,
+        todays_progress,
+        date,
+        remarks,
+        status,
+      }) => (
+        
+        {
+        url: `projectactivity/${projectId}/updateDprLog/${activityId}`, // Adjust the URL as needed
+        method: "PATCH",
+        body: {
+          todays_progress,
+          date,
+          remarks,
+          status,
+        },
       }),
       invalidatesTags: ["Project"],
     }),
   }),
 });
 
-export const { useGetAllDprQuery, useUpdateDprLogMutation } = dprSlice;
+export const {
+
+  useGetAllDprQuery,
+  useUpdateDprLogMutation } = dprSlice;

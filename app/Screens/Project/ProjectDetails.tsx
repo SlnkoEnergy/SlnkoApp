@@ -354,6 +354,8 @@ type ProjectDetailsScreenProps = StackScreenProps<RootStackParamList, 'ProjectDe
 
 const ProjectDetails = ({route,navigation} : ProjectDetailsScreenProps) => {
 
+    console.log(route.params);
+
     const {data} = route.params;
 
     const theme = useTheme();

@@ -14,15 +14,16 @@ import Icon from "react-native-vector-icons/Feather";
 
 import { COLORS } from "../../constants/theme";
 import SubHeader from "../../layout/SubHeader";
+import { useUpdateDprLogMutation } from "../../store/slices/dprSlice";
 
-type CompanyScreenProps = StackScreenProps<RootStackParamList, "Project">;
-
-/* --------- STATUS LABELS --------- */
+/* --------- STATUS LABELS (UI text) --------- */
 
 const statusLabelMap = {
-  todo: "TO DO",
-  "in-progress": "IN PROGRESS",
-  complete: "COMPLETE",
+  pending: "Pending",
+  idle: "Idle",
+  "work stopped": "Work Stopped",
+  completed: "Completed",
+  "in progress": "In Progress",
 } as const;
 
 type StatusKey = keyof typeof statusLabelMap;
@@ -41,13 +42,13 @@ const StatusRow: React.FC<StatusRowProps> = ({
   selected,
   onPress,
 }) => {
-  const isComplete = variant === "complete";
+  const isCompleted = variant === "completed";
 
   return (
     <TouchableOpacity style={styles.statusRowItem} onPress={onPress}>
       <View style={styles.statusRowLeft}>
         {/* Left icon / circle */}
-        {isComplete ? (
+        {isCompleted ? (
           <View style={[styles.statusCircle, styles.statusCircleComplete]}>
             <Icon name="check" size={12} color={COLORS.white} />
           </View>
@@ -55,13 +56,14 @@ const StatusRow: React.FC<StatusRowProps> = ({
           <View
             style={[
               styles.statusCircle,
-              variant === "todo" && !selected && styles.statusCircleTodo,
-              selected && variant === "in-progress"
-                ? styles.statusCircleActive
-                : styles.statusCircleIdle,
+              (variant === "pending" || variant === "idle") && !selected
+                ? styles.statusCircleTodo
+                : null,
+              selected ? styles.statusCircleActive : styles.statusCircleIdle,
             ]}
           >
-            {selected && variant === "in-progress" && (
+            {/* inner dot only for active "in progress" */}
+            {selected && variant === "in progress" && (
               <View style={styles.statusCircleInner} />
             )}
           </View>
@@ -82,7 +84,7 @@ const StatusRow: React.FC<StatusRowProps> = ({
         <Icon
           name="check-circle"
           size={18}
-          color={isComplete ? COLORS.success : COLORS.primary}
+          color={isCompleted ? COLORS.success : COLORS.primary}
         />
       )}
     </TouchableOpacity>
@@ -166,66 +168,394 @@ type ActivityEvent = {
   toStatus?: StatusKey;
 };
 
-const initialActivity: ActivityEvent[] = [
+/* fallback demo activity if backend arrays are empty */
+const defaultActivity: ActivityEvent[] = [
   {
     id: "1",
     kind: "system",
     createdAt: "Thursday, 8:20 PM",
     message: "You created this task",
   },
-  {
-    id: "2",
-    kind: "status",
-    createdAt: "Thursday, 8:20 PM",
-    message: "You changed status to",
-    fromStatus: "todo",
-    toStatus: "in-progress",
-  },
-  {
-    id: "3",
-    kind: "comment",
-    createdAt: "Thursday, 8:25 PM",
-    author: "Devashish",
-    message: "Hi",
-  },
-  {
-    id: "4",
-    kind: "status",
-    createdAt: "Thursday, 8:26 PM",
-    message: "You changed status to",
-    fromStatus: "in-progress",
-    toStatus: "complete",
-  },
-  {
-    id: "5",
-    kind: "status",
-    createdAt: "Thursday, 8:30 PM",
-    message: "You changed status to",
-    fromStatus: "complete",
-    toStatus: "in-progress",
-  },
 ];
+
+/* -------- Helper: date & number formatting -------- */
+
+function formatShortDate(value?: string | null): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-IN", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function isSameDay(dateStr?: string, today?: Date): boolean {
+  if (!dateStr || !today) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  );
+}
+
+function safeNumber(val: any): number {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatQty(val?: number): string {
+  if (typeof val !== "number" || !Number.isFinite(val)) return "-";
+  return String(Math.round(val));
+}
+
+/* -------- normalize backend status strings -------- */
+
+function normalizeStatusFromBackend(raw?: string | null): StatusKey {
+  if (!raw) return "idle";
+  const s = raw.toLowerCase().trim();
+
+  switch (s) {
+    case "pending":
+      return "pending";
+
+    // backend typo "ideal" → "idle"
+    case "idle":
+    case "ideal":
+      return "idle";
+
+    case "work stopped":
+    case "work_stopped":
+      return "work stopped";
+
+    case "completed":
+    case "complete":
+      return "completed";
+
+    case "in progress":
+    case "in-progress":
+    case "in_progress":
+      return "in progress";
+
+    default:
+      // fallback
+      return "in progress";
+  }
+}
 
 /* -------------------------------------------------------------- */
 
-const Company: React.FC<CompanyScreenProps> = ({ route }) => {
-  const activityName = route?.params?.activityName ?? "Task name";
+type CompanyScreenProps = StackScreenProps<RootStackParamList, "Company">;
+
+const Company = ({ route }: CompanyScreenProps) => {
+  const { data } = route.params; // data = card object with _raw inside
+
+  console.log(data)
+
+  // Title: prefer card title, then activity name, else fallback
+  const activityName =
+    data?.title || data?._raw?.activity_id?.name || "Task name";
+
+  const project = data?._raw?.project_id;
+  const projectName = project?.name ?? "—";
+  const projectCode = data?.code ?? project?.code ?? "—";
+  const projectState = project?.state ?? "—";
+
+  const plannedStart = data?._raw?.planned_start ?? null;
+  const plannedFinish = data?._raw?.planned_finish ?? null;
+  const dueDateLabel =
+    plannedFinish || plannedStart
+      ? formatShortDate(plannedFinish || plannedStart)
+      : "No due date";
+
+  const statusHistory: any[] = Array.isArray(data?._raw?.status_history)
+    ? data._raw.status_history
+    : [];
+
+  const percentCompleteRaw =
+    typeof data?._raw?.percent_complete === "number"
+      ? data._raw.percent_complete
+      : typeof data?._raw?.work_completion?.value === "number"
+        ? data._raw.work_completion.value
+        : undefined;
+
+  // ---- Calculate Total / Completed / Pending / Today from backend ----
+  let completedQty = 0;
+  let todayWorkQty = 0;
+  const today = new Date();
+
+  statusHistory.forEach((entry) => {
+    const qty = safeNumber(entry.todays_progress);
+    if (!qty) return;
+    completedQty += qty;
+    if (isSameDay(entry.date || entry.createdAt, today)) {
+      todayWorkQty += qty;
+    }
+  });
+
+  let totalWorkQty: number | undefined;
+  let pendingQty: number | undefined;
+
+  if (typeof percentCompleteRaw === "number" && percentCompleteRaw > 0) {
+    // total = completed / (percentComplete / 100)
+    totalWorkQty = completedQty / (percentCompleteRaw / 100);
+    pendingQty = totalWorkQty - completedQty;
+  }
+
+  const mapUiStatusToApiStatus = (value: StatusKey): string => {
+    switch (value) {
+      case "in progress":
+        return "in-progress";
+      case "idle":
+        return "ideal"; // backend typo
+      case "work stopped":
+        return "work-stopped";
+      default:
+        return "in-progress";
+    }
+  };
+
+  /* -------- derive initial status from _raw -------- */
+  const deriveInitialStatus = (): StatusKey => {
+    const rawStatus = data?._raw?.current_status?.status as string | undefined;
+    if (rawStatus) {
+      return normalizeStatusFromBackend(rawStatus);
+    }
+
+    // if no current_status, use percentage
+    const pct =
+      typeof data?._raw?.percent_complete === "number"
+        ? data._raw.percent_complete
+        : typeof data?._raw?.work_completion?.value === "number"
+          ? data._raw.work_completion.value
+          : undefined;
+
+    if (typeof pct === "number") {
+      if (pct >= 100) return "completed";
+      if (pct > 0) return "in progress";
+      return "idle";
+    }
+
+    return "idle";
+  };
+
+  // current committed status
+  const [status, setStatus] = useState<StatusKey>(() => deriveInitialStatus());
+
+  // draft status inside modal
+  const [draftStatus, setDraftStatus] = useState<StatusKey>(
+    () => deriveInitialStatus()
+  );
+
+  // note/description for status change (inside modal)
+  const [statusNote, setStatusNote] = useState("");
+  // today's quantity input
+  const [todayQty, setTodayQty] = useState("");
 
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
   const [statusActiveTab, setStatusActiveTab] =
     useState<"status" | "taskType">("status");
-  const [status, setStatus] = useState<StatusKey>("in-progress");
+
   const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   const [taskType, setTaskType] = useState<TaskTypeKey>("task");
 
   const [propertyModalVisible, setPropertyModalVisible] = useState(false);
 
+  /* -------- build activity list from _raw.createdAt + _raw.status_history -------- */
+  const initialActivity: ActivityEvent[] = (() => {
+    const list: ActivityEvent[] = [];
+
+    // created event
+    if (data?._raw?.createdAt && data?._raw?.createdBy?.name) {
+      list.push({
+        id: "created",
+        kind: "system",
+        createdAt: formatDateTime(data._raw.createdAt) || "Created",
+        message: `${data._raw.createdBy.name} created this task`,
+      });
+    }
+
+    // status history → status events
+    if (Array.isArray(data?._raw?.status_history)) {
+      const sorted = [...data._raw.status_history].sort((a: any, b: any) => {
+        const da = new Date(a.createdAt || a.date || "").getTime();
+        const db = new Date(b.createdAt || b.date || "").getTime();
+        return da - db;
+      });
+
+      let prevStatus: StatusKey = "idle";
+
+      sorted.forEach((entry: any, index: number) => {
+        const toStatus = normalizeStatusFromBackend(entry.status);
+        const fromStatus = prevStatus;
+
+        list.push({
+          id: entry._id || `history-${index}`,
+          kind: "status",
+          createdAt:
+            formatDateTime(entry.createdAt || entry.date) ||
+            "Status updated",
+          message: entry.remarks || "Status changed",
+          fromStatus,
+          toStatus,
+        });
+
+        prevStatus = toStatus;
+      });
+    }
+
+    return list.length ? list : defaultActivity;
+  })();
+
   const [activity, setActivity] = useState<ActivityEvent[]>(initialActivity);
   const [commentText, setCommentText] = useState("");
 
-  const openStatusModal = () => setStatusModalVisible(true);
-  const closeStatusModal = () => setStatusModalVisible(false);
+  const openStatusModal = () => {
+    setDraftStatus(status); // sync with current
+    setStatusNote(""); // clear old note
+    setTodayQty("");
+    setStatusActiveTab("status");
+    setStatusModalVisible(true);
+  };
+
+  const closeStatusModal = () => {
+    setStatusModalVisible(false);
+  };
+
+  const [updateDprLog, { isLoading: isUpdating, error: updateErr }] =
+    useUpdateDprLogMutation();
+
+  // when user taps Done on modal
+  const handleStatusModalDone = async () => {
+    const trimmedNote = statusNote.trim();
+    const trimmedQty = todayQty.trim();
+
+    const qtyNumber =
+      trimmedQty.length > 0 && !Number.isNaN(Number(trimmedQty))
+        ? Number(trimmedQty)
+        : null;
+
+    const prevStatus = status;
+    const nextStatus = draftStatus;
+
+    // 🔹 Cap today's qty so it never exceeds pending quantity
+    let effectiveQty: number | null = qtyNumber;
+
+    if (
+      qtyNumber !== null &&
+      typeof pendingQty === "number" &&
+      pendingQty >= 0
+    ) {
+      // if user enters more than pending, cap it
+      if (qtyNumber > pendingQty) {
+        effectiveQty = pendingQty;
+      }
+    }
+
+    // Build a nice message for activity feed
+    let baseMessage = trimmedNote || "Status changed";
+    if (effectiveQty !== null) {
+      baseMessage = `Today's progress: ${effectiveQty} • ${baseMessage}`;
+    }
+
+    // If status changed, add status activity event
+    if (prevStatus !== nextStatus) {
+      setStatus(nextStatus);
+
+      setActivity((prev) => [
+        ...prev,
+        {
+          id: `status-${Date.now()}`,
+          kind: "status",
+          createdAt: "Just now",
+          message: baseMessage,
+          fromStatus: prevStatus,
+          toStatus: nextStatus,
+        },
+      ]);
+    } else if (trimmedNote || effectiveQty !== null) {
+      // only note/qty, no status change -> add as comment event
+      setActivity((prev) => [
+        ...prev,
+        {
+          id: `comment-${Date.now()}`,
+          kind: "comment",
+          createdAt: "Just now",
+          author: "You",
+          message: baseMessage,
+        },
+      ]);
+    }
+
+    // Clear modal UI
+    setStatusNote("");
+    setTodayQty("");
+    setStatusModalVisible(false);
+
+    // 🔽 API payload
+    const apiStatus = mapUiStatusToApiStatus(nextStatus);
+
+    const apiTodayProgress =
+      nextStatus === "in progress" && effectiveQty !== null ? effectiveQty : 0;
+
+    const payload = {
+      projectId: data._raw?.project_id?._id,
+      activityId: data?._raw?.activity_id,
+      todays_progress: apiTodayProgress, // 0 for idle / work stopped
+      date: new Date().toISOString(),
+      remarks: trimmedNote,
+      status: apiStatus, // "in-progress" | "ideal" | "work-stopped"
+    };
+
+    console.log(payload.projectId);
+    console.log(payload.activityId);
+
+    try {
+      const res = await updateDprLog(payload).unwrap();
+      console.log("✅ DPR log updated:", res);
+    } catch (error) {
+      console.error("❌ Failed to update DPR log:", error);
+    }
+  };
+
+  const handleTodayQtyChange = (value: string) => {
+    // allow clearing the input
+    if (value.trim() === "") {
+      setTodayQty("");
+      return;
+    }
+
+    // convert to number
+    const numeric = Number(value);
+
+    if (Number.isNaN(numeric)) {
+      // invalid -> ignore / reset
+      setTodayQty("");
+      return;
+    }
+
+    // if we know pendingQty, cap it
+    if (typeof pendingQty === "number" && pendingQty >= 0 && numeric > pendingQty) {
+      setTodayQty(String(Math.max(pendingQty, 0)));
+    } else {
+      setTodayQty(String(numeric));
+    }
+  };
+
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
@@ -248,18 +578,36 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
     let color = COLORS.textSecondary;
     let bg = COLORS.chipBgNeutral;
 
-    if (value === "in-progress") {
-      iconName = "loader";
-      color = COLORS.info;
-      bg = COLORS.chipBgInfo;
-    } else if (value === "complete") {
-      iconName = "check-circle";
-      color = COLORS.success;
-      bg = COLORS.chipBgSuccess;
-    } else if (value === "todo") {
-      iconName = "clock";
-      color = COLORS.textMuted;
-      bg = COLORS.chipBgNeutral;
+    switch (value) {
+      case "pending":
+        iconName = "clock";
+        color = COLORS.textMuted;
+        bg = COLORS.chipBgNeutral;
+        break;
+
+      case "idle":
+        iconName = "pause-circle";
+        color = COLORS.textSecondary;
+        bg = COLORS.chipBgNeutral;
+        break;
+
+      case "work stopped":
+        iconName = "alert-circle";
+        color = COLORS.warning;
+        bg = COLORS.chipBgNeutral;
+        break;
+
+      case "in progress":
+        iconName = "loader";
+        color = COLORS.info;
+        bg = COLORS.chipBgInfo;
+        break;
+
+      case "completed":
+        iconName = "check-circle";
+        color = COLORS.success;
+        bg = COLORS.chipBgSuccess;
+        break;
     }
 
     return (
@@ -270,12 +618,20 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
           color={color}
           style={{ marginRight: 4 }}
         />
-        <Text style={[styles.activityStatusChipText, { color }]} numberOfLines={1}>
+        <Text
+          style={[styles.activityStatusChipText, { color }]}
+          numberOfLines={1}
+        >
           {statusLabelMap[value]}
         </Text>
       </View>
     );
   };
+
+  const percentSafe = Math.min(
+    Math.max(percentCompleteRaw ?? 0, 0),
+    100
+  );
 
   return (
     <View style={styles.container}>
@@ -328,10 +684,14 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
         >
           {/* Title Card */}
           <View style={styles.titleCard}>
-            <Text style={styles.listLabel}>Personal List</Text>
+            <Text style={styles.listLabel}>
+              {projectName} • {projectCode} • {projectState}
+            </Text>
+
             <Text style={styles.titleText}>{activityName}</Text>
 
             <View style={styles.statusPill}>
+              {/* use normalized committed `status` */}
               {renderStatusChip(status)}
               <View style={styles.statusPillDivider} />
               <View style={styles.statusPillType}>
@@ -346,6 +706,80 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
             </View>
           </View>
 
+          {/* -------- Work Summary Card (attractive) -------- */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeaderRow}>
+              <View>
+                <Text style={styles.summaryTitle}>Progress overview</Text>
+                <Text style={styles.summarySubtitle}>
+                  {percentSafe}% complete • {formatQty(completedQty)} /{" "}
+                  {formatQty(totalWorkQty)} qty
+                </Text>
+              </View>
+
+              <View style={styles.summaryChip}>
+                <Icon
+                  name="trending-up"
+                  size={14}
+                  color={COLORS.success}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={styles.summaryChipText}>{percentSafe}%</Text>
+              </View>
+            </View>
+
+            <View style={styles.summaryGridRow}>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryLabel}>Total work</Text>
+                <Text style={styles.summaryBigValue}>
+                  {formatQty(totalWorkQty)}
+                </Text>
+                <Text style={styles.summaryUnitText}>Planned qty</Text>
+              </View>
+
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryLabel}>Completed</Text>
+                <Text style={styles.summaryBigValueSuccess}>
+                  {formatQty(completedQty)}
+                </Text>
+                <Text style={styles.summaryUnitText}>Qty done</Text>
+              </View>
+            </View>
+
+            <View style={styles.summaryGridRow}>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryLabel}>Pending</Text>
+                <Text style={styles.summaryBigValueWarning}>
+                  {formatQty(pendingQty)}
+                </Text>
+                <Text style={styles.summaryUnitText}>Qty remaining</Text>
+              </View>
+
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryLabel}>Today&apos;s work</Text>
+                <Text style={styles.summaryBigValueInfo}>
+                  {formatQty(todayWorkQty)}
+                </Text>
+                <Text style={styles.summaryUnitText}>Qty logged today</Text>
+              </View>
+            </View>
+
+            <View style={styles.summaryProgressBarWrapper}>
+              <View style={styles.summaryProgressBarBg}>
+                <View
+                  style={[
+                    styles.summaryProgressBarFill,
+                    { width: `${percentSafe}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.summaryProgressHint}>
+                Target {formatQty(totalWorkQty)} • Completed{" "}
+                {formatQty(completedQty)}
+              </Text>
+            </View>
+          </View>
+
           {/* Status & Type card */}
           <TouchableOpacity style={styles.cardRow} onPress={openStatusModal}>
             <View style={styles.statusIconWrapper}>
@@ -357,7 +791,7 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
             <View style={{ flex: 1 }}>
               <Text style={styles.sectionLabel}>Status & Type</Text>
               <Text style={styles.statusText}>
-                {statusLabelMap[status] ?? "IN PROGRESS"}
+                {statusLabelMap[status] ?? "In Progress"}
               </Text>
             </View>
 
@@ -370,9 +804,10 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
               <View style={styles.rowIconWrapper}>
                 <Icon name="user" size={16} color={COLORS.white} />
               </View>
-              <Text style={styles.rowLabel}>Add Assignee</Text>
+              <Text style={styles.rowLabel}>
+                {data?._raw?.createdBy?.name || "Add Assignee"}
+              </Text>
             </View>
-            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {/* Due Date */}
@@ -383,91 +818,11 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
               </View>
               <View>
                 <Text style={styles.rowLabel}>Due date</Text>
-                <Text style={styles.rowValue}>Nov 24</Text>
+                <Text style={styles.rowValue}>{dueDateLabel}</Text>
               </View>
             </View>
             <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
-
-          {/* Add property */}
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.addPropertyRow}
-              onPress={() =>
-                setPropertyModalVisible((prevVisible) => !prevVisible)
-              }
-            >
-              <Icon name="plus" size={16} color={COLORS.primary} />
-              <Text style={styles.addPropertyText}>Add property</Text>
-            </TouchableOpacity>
-
-            {propertyModalVisible && (
-              <View style={styles.propertyInlineCard}>
-                <TouchableOpacity style={styles.propertyItem}>
-                  <View style={styles.propertyItemLeft}>
-                    <Icon name="flag" size={16} color={COLORS.warning} />
-                    <Text style={styles.propertyItemLabel}>Priority</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.propertyItem}>
-                  <View style={styles.propertyItemLeft}>
-                    <Icon name="tag" size={16} color={COLORS.textSecondary} />
-                    <Text style={styles.propertyItemLabel}>Tags</Text>
-                  </View>
-                  <Icon
-                    name="chevron-right"
-                    size={16}
-                    color={COLORS.textMuted}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.propertyItem, { borderBottomWidth: 0 }]}
-                >
-                  <View style={styles.propertyItemLeft}>
-                    <Icon
-                      name="clock"
-                      size={16}
-                      color={COLORS.textSecondary}
-                    />
-                    <Text style={styles.propertyItemLabel}>Time tracking</Text>
-                  </View>
-                  <Icon
-                    name="chevron-right"
-                    size={16}
-                    color={COLORS.textMuted}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.propertyAddSubtaskRow}>
-                  <Text style={styles.propertyAddSubtaskText}>
-                    + Add Subtask
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Description */}
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.rowButtonDesc}>
-              <View style={styles.rowLeft}>
-                <Text style={styles.sectionLabel}>Description</Text>
-              </View>
-              <Icon
-                name="chevron-right"
-                size={18}
-                color={COLORS.textMuted}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity>
-              <Text style={styles.descriptionPlaceholder}>
-                Tap to add a description
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Upload Document */}
           <View style={styles.card}>
@@ -475,11 +830,7 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
               <View style={styles.rowLeft}>
                 <Text style={styles.sectionLabel}>Upload Document</Text>
               </View>
-              <Icon
-                name="chevron-right"
-                size={18}
-                color={COLORS.textMuted}
-              />
+              <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.addPropertyRowDoc}>
@@ -602,7 +953,7 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
               <Text style={styles.modalTitle}>Status & Task Type</Text>
 
               <TouchableOpacity
-                onPress={closeStatusModal}
+                onPress={handleStatusModalDone}
                 style={{ padding: 4 }}
               >
                 <Text style={styles.modalDoneText}>Done</Text>
@@ -655,31 +1006,53 @@ const Company: React.FC<CompanyScreenProps> = ({ route }) => {
 
             {statusActiveTab === "status" ? (
               <ScrollView style={styles.modalScroll}>
-                <Text style={styles.modalSectionHeading}>Not started</Text>
+                {/* Only 3 status options: In Progress, Idle, Work Stopped */}
+                <Text style={styles.modalSectionHeading}>Status</Text>
                 <StatusRow
-                  label="TO DO"
-                  variant="todo"
-                  selected={status === "todo"}
-                  onPress={() => setStatus("todo")}
+                  label={statusLabelMap["in progress"]}
+                  variant="in progress"
+                  selected={draftStatus === "in progress"}
+                  onPress={() => setDraftStatus("in progress")}
                 />
-                <View style={styles.modalDividerThin} />
+                <StatusRow
+                  label={statusLabelMap["idle"]}
+                  variant="idle"
+                  selected={draftStatus === "idle"}
+                  onPress={() => setDraftStatus("idle")}
+                />
+                <StatusRow
+                  label={statusLabelMap["work stopped"]}
+                  variant="work stopped"
+                  selected={draftStatus === "work stopped"}
+                  onPress={() => setDraftStatus("work stopped")}
+                />
 
-                <Text style={styles.modalSectionHeading}>Active</Text>
-                <StatusRow
-                  label="IN PROGRESS"
-                  variant="in-progress"
-                  selected={status === "in-progress"}
-                  onPress={() => setStatus("in-progress")}
-                />
+                {/* Description INSIDE status modal */}
                 <View style={styles.modalDividerThin} />
-
-                <Text style={styles.modalSectionHeading}>Closed</Text>
-                <StatusRow
-                  label="COMPLETE"
-                  variant="complete"
-                  selected={status === "complete"}
-                  onPress={() => setStatus("complete")}
+                <Text style={styles.modalSectionHeading}>Description</Text>
+                <TextInput
+                  style={styles.statusNoteInput}
+                  multiline
+                  placeholder="Add description for this status change"
+                  placeholderTextColor={COLORS.placeholder}
+                  value={statusNote}
+                  onChangeText={setStatusNote}
+                  textAlignVertical="top"
                 />
+
+                {/* Today's quantity input below description */}
+                <Text style={styles.modalSectionHeading}>
+                  Today&apos;s Work (Qty)
+                </Text>
+                <TextInput
+                  style={styles.statusQtyInput}
+                  keyboardType="numeric"
+                  placeholder="Enter today's work in numbers"
+                  placeholderTextColor={COLORS.placeholder}
+                  value={todayQty}
+                  onChangeText={handleTodayQtyChange}
+                />
+
               </ScrollView>
             ) : (
               <ScrollView style={styles.modalScroll}>
@@ -904,11 +1277,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  addPropertyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 4,
-  },
   addPropertyRowDoc: {
     flexDirection: "row",
     alignItems: "center",
@@ -925,6 +1293,107 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     color: COLORS.textMuted,
     fontSize: 13,
+  },
+
+  /* Work summary card (attractive) */
+  summaryCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderColor,
+  },
+  summaryHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+  },
+  summarySubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  summaryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: COLORS.chipBgSuccess || COLORS.accentSoft,
+  },
+  summaryChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.success,
+  },
+  summaryGridRow: {
+    flexDirection: "row",
+    marginTop: 6,
+  },
+  summaryGridItem: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingRight: 8,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+  summaryBigValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+    marginTop: 2,
+  },
+  summaryBigValueSuccess: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.success,
+    marginTop: 2,
+  },
+  summaryBigValueWarning: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.warning,
+    marginTop: 2,
+  },
+  summaryBigValueInfo: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.info,
+    marginTop: 2,
+  },
+  summaryUnitText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  summaryProgressBarWrapper: {
+    marginTop: 10,
+  },
+  summaryProgressBarBg: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.input,
+    overflow: "hidden",
+  },
+  summaryProgressBarFill: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: COLORS.primary,
+  },
+  summaryProgressHint: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 4,
   },
 
   /* Activity tab container */
@@ -1179,7 +1648,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 
-  /* Inline Add Property menu box */
+  /* Inline Add Property menu box (kept for future if you want) */
   propertyInlineCard: {
     marginTop: 4,
     backgroundColor: COLORS.surfaceAlt,
@@ -1213,5 +1682,31 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 13,
     fontWeight: "600",
+  },
+
+  /* Description in status modal */
+  statusNoteInput: {
+    borderWidth: 1,
+    borderColor: COLORS.borderColor,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 80,
+    maxHeight: 160,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.input,
+  },
+
+  statusQtyInput: {
+    borderWidth: 1,
+    borderColor: COLORS.borderColor,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.input,
+    marginTop: 4,
   },
 });

@@ -58,6 +58,7 @@ import PayrollPeople from "../Screens/Settings/PayrollPeople";
 import SelectParty from "../Screens/Contacts/SelectParty";
 import AddTask from "../Screens/Project/AddTask";
 import MainSignIn from "../Screens/Auth/MainSignIn";
+import Company from "../Screens/Company/Company";
 
 
 
@@ -98,7 +99,7 @@ const StackNavigator = () => {
         <Stack.Screen name={"Estimatesdetails"} component={Estimatesdetails} />
         <Stack.Screen name={"DownloadQuotation"} component={DownloadQuotation} />
         <Stack.Screen name={"AddItem"} component={AddItem} />
-        <Stack.Screen name={"ProjectDetails"} component={ProjectDetails} />
+        <Stack.Screen name={"Company"} component={Company} />
         <Stack.Screen name={"TaskDetails"} component={TaskDetails} />
         <Stack.Screen name={"AttendanceDetails"} component={AttendanceDetails} />
         <Stack.Screen name={"PartyProjectBalance"} component={PartyProjectBalance} />
