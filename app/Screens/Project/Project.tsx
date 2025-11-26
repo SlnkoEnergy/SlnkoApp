@@ -13,10 +13,7 @@ import { RootStackParamList } from "../../Navigations/RootStackParamList";
 import Icon from "react-native-vector-icons/Feather";
 
 import { COLORS } from "../../constants/theme";
-
-import SubHeader from "../../layout/SubHeader"
-// If you later want a custom header, you can import it here and render above the tabs
-// import Header from "../../layout/Header";
+import SubHeader from "../../layout/SubHeader";
 
 type ProjectScreenProps = StackScreenProps<RootStackParamList, "Project">;
 
@@ -52,7 +49,7 @@ const StatusRow: React.FC<StatusRowProps> = ({
         {/* Left icon / circle */}
         {isComplete ? (
           <View style={[styles.statusCircle, styles.statusCircleComplete]}>
-            <Icon name="check" size={12} color="#000" />
+            <Icon name="check" size={12} color={COLORS.white} />
           </View>
         ) : (
           <View
@@ -85,7 +82,7 @@ const StatusRow: React.FC<StatusRowProps> = ({
         <Icon
           name="check-circle"
           size={18}
-          color={isComplete ? "#22c55e" : COLORS.primary}
+          color={isComplete ? COLORS.success : COLORS.primary}
         />
       )}
     </TouchableOpacity>
@@ -211,8 +208,7 @@ const initialActivity: ActivityEvent[] = [
 
 /* -------------------------------------------------------------- */
 
-const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
-  // Make params safe in case this screen is opened without activityName
+const Project: React.FC<ProjectScreenProps> = ({ route }) => {
   const activityName = route?.params?.activityName ?? "Task name";
 
   const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
@@ -223,10 +219,8 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
 
   const [taskType, setTaskType] = useState<TaskTypeKey>("task");
 
-  // visibility for inline property box
   const [propertyModalVisible, setPropertyModalVisible] = useState(false);
 
-  // Activity state
   const [activity, setActivity] = useState<ActivityEvent[]>(initialActivity);
   const [commentText, setCommentText] = useState("");
 
@@ -252,27 +246,31 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
   const renderStatusChip = (value: StatusKey) => {
     let iconName: string = "circle";
     let color = COLORS.textSecondary;
+    let bg = COLORS.chipBgNeutral;
 
     if (value === "in-progress") {
-      iconName = "info";
-      color = "#3b82f6";
+      iconName = "loader";
+      color = COLORS.info;
+      bg = COLORS.chipBgInfo;
     } else if (value === "complete") {
       iconName = "check-circle";
-      color = "#22c55e";
+      color = COLORS.success;
+      bg = COLORS.chipBgSuccess;
     } else if (value === "todo") {
-      iconName = "loader";
-      color = "#e5e7eb";
+      iconName = "clock";
+      color = COLORS.textMuted;
+      bg = COLORS.chipBgNeutral;
     }
 
     return (
-      <View style={styles.activityStatusChip}>
+      <View style={[styles.activityStatusChip, { backgroundColor: bg }]}>
         <Icon
           name={iconName}
           size={14}
           color={color}
           style={{ marginRight: 4 }}
         />
-        <Text style={[styles.activityStatusChipText, { color }]}>
+        <Text style={[styles.activityStatusChipText, { color }]} numberOfLines={1}>
           {statusLabelMap[value]}
         </Text>
       </View>
@@ -281,184 +279,214 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* If you want a header, add it here */}
       <SubHeader />
-      {/* <Header navigation={navigation} title="Project" /> */}
 
       {/* Top Tabs: Details / Activity */}
-      <View style={styles.tabsRow}>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab("details")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "details"
-                ? styles.tabTextActive
-                : styles.tabTextInactive,
-            ]}
+      <View style={styles.tabsWrapper}>
+        <View style={styles.tabsRow}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab("details")}
           >
-            Details
-          </Text>
-          {activeTab === "details" && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "details"
+                  ? styles.tabTextActive
+                  : styles.tabTextInactive,
+              ]}
+            >
+              Details
+            </Text>
+            {activeTab === "details" && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => setActiveTab("activity")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "activity"
-                ? styles.tabTextActive
-                : styles.tabTextInactive,
-            ]}
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => setActiveTab("activity")}
           >
-            Activity
-          </Text>
-          {activeTab === "activity" && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "activity"
+                  ? styles.tabTextActive
+                  : styles.tabTextInactive,
+              ]}
+            >
+              Activity
+            </Text>
+            {activeTab === "activity" && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {activeTab === "details" ? (
         /* ---------------- DETAILS TAB ---------------- */
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.listLabel}>Personal List</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Title Card */}
+          <View style={styles.titleCard}>
+            <Text style={styles.listLabel}>Personal List</Text>
+            <Text style={styles.titleText}>{activityName}</Text>
 
-          <Text style={styles.titleText}>{activityName}</Text>
+            <View style={styles.statusPill}>
+              {renderStatusChip(status)}
+              <View style={styles.statusPillDivider} />
+              <View style={styles.statusPillType}>
+                <Icon
+                  name="check-square"
+                  size={14}
+                  color={COLORS.textSecondary}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={styles.statusPillTypeText}>Task</Text>
+              </View>
+            </View>
+          </View>
 
-          {/* Status & Type row – opens modal */}
-          <TouchableOpacity style={styles.sectionRow} onPress={openStatusModal}>
+          {/* Status & Type card */}
+          <TouchableOpacity style={styles.cardRow} onPress={openStatusModal}>
             <View style={styles.statusIconWrapper}>
               <View style={styles.statusOuterDot}>
                 <View style={styles.statusInnerDot} />
               </View>
             </View>
 
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.sectionLabel}>Status & Type</Text>
               <Text style={styles.statusText}>
                 {statusLabelMap[status] ?? "IN PROGRESS"}
               </Text>
             </View>
+
+            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {/* Assignee */}
-          <TouchableOpacity style={styles.rowButton}>
+          <TouchableOpacity style={styles.cardRow}>
             <View style={styles.rowLeft}>
               <View style={styles.rowIconWrapper}>
-                <Icon name="user" size={16} color="#fff" />
+                <Icon name="user" size={16} color={COLORS.white} />
               </View>
               <Text style={styles.rowLabel}>Add Assignee</Text>
             </View>
-            <Icon name="chevron-right" size={18} color="#777" />
+            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {/* Due Date */}
-          <TouchableOpacity style={styles.rowButtonDate}>
+          <TouchableOpacity style={styles.cardRow}>
             <View style={styles.rowLeft}>
               <View style={styles.rowIconWrapper}>
-                <Icon name="calendar" size={16} color="#fff" />
+                <Icon name="calendar" size={16} color={COLORS.white} />
               </View>
               <View>
                 <Text style={styles.rowLabel}>Due date</Text>
                 <Text style={styles.rowValue}>Nov 24</Text>
               </View>
             </View>
-            <Icon name="chevron-right" size={18} color="#777" />
+            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
           {/* Add property */}
-          <TouchableOpacity
-            style={styles.addPropertyRow}
-            onPress={() =>
-              setPropertyModalVisible((prevVisible) => !prevVisible)
-            }
-          >
-            <Icon name="plus" size={16} color={COLORS.primary} />
-            <Text style={styles.addPropertyText}>Add property</Text>
-          </TouchableOpacity>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.addPropertyRow}
+              onPress={() =>
+                setPropertyModalVisible((prevVisible) => !prevVisible)
+              }
+            >
+              <Icon name="plus" size={16} color={COLORS.primary} />
+              <Text style={styles.addPropertyText}>Add property</Text>
+            </TouchableOpacity>
 
-          {/* Inline property box directly under "Add property" */}
-          {propertyModalVisible && (
-            <View style={styles.propertyInlineCard}>
-              <TouchableOpacity style={styles.propertyItem}>
-                <View style={styles.propertyItemLeft}>
-                  <Icon name="flag" size={16} color={COLORS.primary} />
-                  <Text style={styles.propertyItemLabel}>Priority</Text>
-                </View>
-              </TouchableOpacity>
+            {propertyModalVisible && (
+              <View style={styles.propertyInlineCard}>
+                <TouchableOpacity style={styles.propertyItem}>
+                  <View style={styles.propertyItemLeft}>
+                    <Icon name="flag" size={16} color={COLORS.warning} />
+                    <Text style={styles.propertyItemLabel}>Priority</Text>
+                  </View>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.propertyItem}>
-                <View style={styles.propertyItemLeft}>
-                  <Icon name="tag" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.propertyItemLabel}>Tags</Text>
-                </View>
-                <Icon
-                  name="chevron-right"
-                  size={16}
-                  color={COLORS.textMuted}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.propertyItem, { borderBottomWidth: 0 }]}
-              >
-                <View style={styles.propertyItemLeft}>
+                <TouchableOpacity style={styles.propertyItem}>
+                  <View style={styles.propertyItemLeft}>
+                    <Icon name="tag" size={16} color={COLORS.textSecondary} />
+                    <Text style={styles.propertyItemLabel}>Tags</Text>
+                  </View>
                   <Icon
-                    name="clock"
+                    name="chevron-right"
                     size={16}
-                    color={COLORS.textSecondary}
+                    color={COLORS.textMuted}
                   />
-                  <Text style={styles.propertyItemLabel}>Time tracking</Text>
-                </View>
-                <Icon
-                  name="chevron-right"
-                  size={16}
-                  color={COLORS.textMuted}
-                />
-              </TouchableOpacity>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.propertyAddSubtaskRow}>
-                <Text style={styles.propertyAddSubtaskText}>Add Subtask</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                <TouchableOpacity
+                  style={[styles.propertyItem, { borderBottomWidth: 0 }]}
+                >
+                  <View style={styles.propertyItemLeft}>
+                    <Icon
+                      name="clock"
+                      size={16}
+                      color={COLORS.textSecondary}
+                    />
+                    <Text style={styles.propertyItemLabel}>Time tracking</Text>
+                  </View>
+                  <Icon
+                    name="chevron-right"
+                    size={16}
+                    color={COLORS.textMuted}
+                  />
+                </TouchableOpacity>
 
-          {/* Divider – full width */}
-          <View style={styles.divider} />
+                <TouchableOpacity style={styles.propertyAddSubtaskRow}>
+                  <Text style={styles.propertyAddSubtaskText}>
+                    + Add Subtask
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           {/* Description */}
-          <TouchableOpacity style={styles.rowButtonDesc}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.sectionLabel}>Description</Text>
-            </View>
-            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.rowButtonDesc}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.sectionLabel}>Description</Text>
+              </View>
+              <Icon
+                name="chevron-right"
+                size={18}
+                color={COLORS.textMuted}
+              />
+            </TouchableOpacity>
 
-          <TouchableOpacity>
-            <Text style={styles.descriptionPlaceholder}>
-              Tap to add a description
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider – full width */}
-          <View style={styles.divider} />
+            <TouchableOpacity>
+              <Text style={styles.descriptionPlaceholder}>
+                Tap to add a description
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Upload Document */}
-          <TouchableOpacity style={styles.rowButtonDesc}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.sectionLabel}>Upload Document</Text>
-            </View>
-            <Icon name="chevron-right" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.rowButtonDesc}>
+              <View style={styles.rowLeft}>
+                <Text style={styles.sectionLabel}>Upload Document</Text>
+              </View>
+              <Icon
+                name="chevron-right"
+                size={18}
+                color={COLORS.textMuted}
+              />
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addPropertyRowDoc}>
-            <Icon name="plus" size={16} color={COLORS.primary} />
-            <Text style={styles.addPropertyText}>Add Document</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.addPropertyRowDoc}>
+              <Icon name="plus" size={16} color={COLORS.primary} />
+              <Text style={styles.addPropertyText}>Add Document</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       ) : (
         /* ---------------- ACTIVITY TAB ---------------- */
@@ -466,10 +494,10 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
           <ScrollView
             style={styles.activityScroll}
             contentContainerStyle={styles.activityScrollContent}
+            showsVerticalScrollIndicator={false}
           >
             {activity.map((item) => {
               if (item.kind === "comment") {
-                // Comment card
                 return (
                   <View key={item.id} style={styles.activityCommentBlock}>
                     <View style={styles.activityCommentHeader}>
@@ -496,7 +524,6 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
                 );
               }
 
-              // System / status card
               return (
                 <View key={item.id} style={styles.activityCard}>
                   <Text style={styles.activitySystemText}>
@@ -511,7 +538,7 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
                         <Icon
                           name="arrow-right"
                           size={14}
-                          color={COLORS.textSecondary}
+                          color={COLORS.textMuted}
                           style={{ marginHorizontal: 6 }}
                         />
                         {renderStatusChip(item.toStatus)}
@@ -529,13 +556,13 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
           {/* Comment composer fixed at bottom */}
           <View style={styles.commentBar}>
             <View style={styles.commentPlusWrap}>
-              <Icon name="plus" size={18} color={COLORS.textSecondary} />
+              <Icon name="plus" size={18} color={COLORS.textMuted} />
             </View>
 
             <TextInput
               style={styles.commentInput}
               placeholder="Write a comment"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={COLORS.placeholder}
               value={commentText}
               onChangeText={setCommentText}
             />
@@ -559,17 +586,19 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
       <Modal
         visible={statusModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={closeStatusModal}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity onPress={closeStatusModal}>
-            <View style={styles.modelBlur} />
-          </TouchableOpacity>
-
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={closeStatusModal}
+            activeOpacity={1}
+          />
           <View style={styles.modalContainer}>
             {/* Header */}
             <View style={styles.modalHeader}>
+              <View style={{ width: 60 }} />
               <Text style={styles.modalTitle}>Status & Task Type</Text>
 
               <TouchableOpacity
@@ -580,6 +609,10 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
 
+            {/* Small handle bar */}
+            <View style={styles.modalHandle} />
+
+            {/* Tabs */}
             <View style={styles.tabsRow}>
               <TouchableOpacity
                 style={styles.tabItem}
@@ -622,7 +655,6 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
 
             {statusActiveTab === "status" ? (
               <ScrollView style={styles.modalScroll}>
-                {/* Not started */}
                 <Text style={styles.modalSectionHeading}>Not started</Text>
                 <StatusRow
                   label="TO DO"
@@ -632,7 +664,6 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
                 />
                 <View style={styles.modalDividerThin} />
 
-                {/* Active */}
                 <Text style={styles.modalSectionHeading}>Active</Text>
                 <StatusRow
                   label="IN PROGRESS"
@@ -642,7 +673,6 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
                 />
                 <View style={styles.modalDividerThin} />
 
-                {/* Closed */}
                 <Text style={styles.modalSectionHeading}>Closed</Text>
                 <StatusRow
                   label="COMPLETE"
@@ -652,7 +682,6 @@ const Project: React.FC<ProjectScreenProps> = ({ route, navigation }) => {
                 />
               </ScrollView>
             ) : (
-              /* Task Type list */
               <ScrollView style={styles.modalScroll}>
                 <TaskTypeRow
                   label="Task"
@@ -686,74 +715,139 @@ export default Project;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // paddingTop: 20,
+    backgroundColor: COLORS.background,
   },
 
   /* Top tabs */
+  tabsWrapper: {
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderColor,
+    shadowColor: COLORS.black,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+  },
   tabsRow: {
     flexDirection: "row",
-    paddingTop: 20,
-    borderBottomColor: COLORS.textMuted,
-    borderBottomWidth: 1,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
     position: "relative",
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
   tabTextActive: {
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
   },
   tabTextInactive: {
     color: COLORS.textMuted,
   },
   tabIndicator: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: -1,
+    left: "20%",
+    right: "20%",
+    bottom: 0,
     height: 2,
+    borderRadius: 999,
     backgroundColor: COLORS.primary,
   },
 
   /* Main content */
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     paddingBottom: 32,
   },
+
+  titleCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: COLORS.black,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
   listLabel: {
-    color: COLORS.textPrimary,
-    fontSize: 15,
+    color: COLORS.textMuted,
+    fontSize: 13,
     marginBottom: 4,
   },
   titleText: {
-    color: COLORS.textSecondary,
+    color: COLORS.title,
     fontSize: 22,
     fontWeight: "700",
-    marginBottom: 16,
+    marginBottom: 8,
   },
 
-  sectionRow: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 4,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: COLORS.accentSoft,
+  },
+  statusPillDivider: {
+    width: 1,
+    height: 14,
+    marginHorizontal: 8,
+    backgroundColor: COLORS.borderColor,
+  },
+  statusPillType: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusPillTypeText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: "500",
+  },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderColor,
+  },
+
+  cardRow: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderBottomColor: COLORS.textSecondary,
-    borderBottomWidth: 1,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderColor,
   },
 
   statusIconWrapper: {
     marginRight: 10,
   },
   statusOuterDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: COLORS.primary,
     alignItems: "center",
@@ -769,35 +863,23 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: COLORS.textPrimary,
     fontSize: 14,
+    fontWeight: "500",
   },
   statusText: {
     color: COLORS.textSecondary,
     fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontWeight: "600",
+    letterSpacing: 0.4,
     marginTop: 2,
   },
 
-  rowButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomColor: COLORS.textSecondary,
-    borderBottomWidth: 1,
-  },
   rowButtonDesc: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 10,
+    paddingTop: 4,
   },
-  rowButtonDate: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
+
   rowLeft: {
     flexDirection: "row",
     alignItems: "center",
@@ -806,7 +888,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#1f2937",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -815,6 +897,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: 14,
     marginBottom: 2,
+    fontWeight: "500",
   },
   rowValue: {
     color: COLORS.textSecondary,
@@ -824,31 +907,22 @@ const styles = StyleSheet.create({
   addPropertyRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 4,
   },
   addPropertyRowDoc: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingLeft: 8,
+    paddingTop: 8,
   },
   addPropertyText: {
     marginLeft: 6,
     fontSize: 13,
     color: COLORS.primary,
-    fontWeight: "500",
-  },
-
-  divider: {
-    height: 10,
-    backgroundColor: COLORS.textSecondary,
-    marginVertical: 8,
-    marginHorizontal: -26,
-    alignSelf: "stretch",
+    fontWeight: "600",
   },
 
   descriptionPlaceholder: {
-    paddingTop: 2,
+    paddingTop: 6,
     color: COLORS.textMuted,
     fontSize: 13,
   },
@@ -856,52 +930,54 @@ const styles = StyleSheet.create({
   /* Activity tab container */
   activityContainer: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   activityScroll: {
     flex: 1,
   },
   activityScrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 80, // space for comment bar
+    paddingTop: 16,
+    paddingBottom: 80,
   },
   activityCard: {
-    backgroundColor: "#111827",
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.borderColor,
   },
   activitySystemText: {
-    color: "#f9fafb",
+    color: COLORS.textSecondary,
     fontSize: 13,
     marginBottom: 6,
   },
   activityStatusRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   activityStatusChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: "#020617",
   },
   activityStatusChipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   activityTimestampSmall: {
     color: COLORS.textMuted,
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 4,
   },
 
   /* Comment item */
   activityCommentBlock: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   activityCommentHeader: {
     flexDirection: "row",
@@ -912,13 +988,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.textSecondary,
+    backgroundColor: COLORS.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
   },
   activityAvatarInitial: {
-    color: "#fff",
+    color: COLORS.primary,
     fontWeight: "700",
   },
   activityCommentTitleRow: {
@@ -939,6 +1015,7 @@ const styles = StyleSheet.create({
     marginLeft: 40,
     color: COLORS.textPrimary,
     fontSize: 13,
+    marginTop: 4,
   },
 
   /* Comment bar at bottom */
@@ -948,15 +1025,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.textMuted,
-    backgroundColor: "#000",
+    borderTopColor: COLORS.borderColor,
+    backgroundColor: COLORS.card,
   },
   commentPlusWrap: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.textMuted,
+    borderColor: COLORS.borderColor,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
@@ -968,7 +1045,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "#111827",
+    backgroundColor: COLORS.input,
     color: COLORS.textSecondary,
     fontSize: 14,
     marginRight: 8,
@@ -977,23 +1054,23 @@ const styles = StyleSheet.create({
   /* Modal styles */
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
   },
   modalContainer: {
-    flex: 1,
-    backgroundColor: "white",
-    paddingTop: 20,
+    backgroundColor: COLORS.card,
+    paddingTop: 8,
     paddingHorizontal: 16,
-  },
-  modelBlur: {
-    backgroundColor: "rgba(255,255,255,0.3)",
-    height: 80,
+    paddingBottom: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   modalTitle: {
     flex: 1,
@@ -1007,47 +1084,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  modalSearchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111827",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 38,
-    marginBottom: 12,
-  },
-  modalSearchInput: {
-    flex: 1,
-    marginLeft: 6,
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    paddingVertical: 0,
-  },
-  modalTabsRow: {
-    flexDirection: "row",
-    borderBottomColor: "#27272a",
-    borderBottomWidth: 1,
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: COLORS.borderColor,
+    alignSelf: "center",
     marginBottom: 8,
-  },
-  modalTabItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 6,
-  },
-  modalTabTextActive: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalTabTextInactive: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-  },
-  modalTabIndicator: {
-    marginTop: 4,
-    height: 2,
-    width: "100%",
-    backgroundColor: COLORS.textSecondary,
   },
   modalScroll: {
     marginTop: 8,
@@ -1060,7 +1103,7 @@ const styles = StyleSheet.create({
   },
   modalDividerThin: {
     height: 1,
-    backgroundColor: "#27272a",
+    backgroundColor: COLORS.borderColor,
     marginVertical: 8,
   },
 
@@ -1069,6 +1112,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 8,
   },
   statusRowLeft: {
     flexDirection: "row",
@@ -1091,6 +1135,7 @@ const styles = StyleSheet.create({
   },
   statusCircleTodo: {
     borderStyle: "dashed",
+    borderColor: COLORS.textMuted,
   },
   statusCircleInner: {
     width: 10,
@@ -1100,7 +1145,7 @@ const styles = StyleSheet.create({
   },
   statusCircleComplete: {
     borderWidth: 0,
-    backgroundColor: "#22c55e",
+    backgroundColor: COLORS.success,
   },
   statusRowLabel: {
     color: COLORS.textPrimary,
@@ -1117,8 +1162,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#27272a",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderColor,
   },
   taskTypeLeft: {
     flexDirection: "row",
@@ -1136,19 +1181,20 @@ const styles = StyleSheet.create({
 
   /* Inline Add Property menu box */
   propertyInlineCard: {
-    marginTop: 8,
-    backgroundColor: COLORS.textMuted,
-    borderRadius: 10,
+    marginTop: 4,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: 12,
     paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   propertyItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 8,
+    paddingHorizontal: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#27272a",
+    borderBottomColor: COLORS.borderColor,
   },
   propertyItemLeft: {
     flexDirection: "row",
@@ -1156,7 +1202,7 @@ const styles = StyleSheet.create({
   },
   propertyItemLabel: {
     marginLeft: 8,
-    color: "#ffffff",
+    color: COLORS.textSecondary,
     fontSize: 13,
   },
   propertyAddSubtaskRow: {
@@ -1166,6 +1212,6 @@ const styles = StyleSheet.create({
   propertyAddSubtaskText: {
     color: COLORS.primary,
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });

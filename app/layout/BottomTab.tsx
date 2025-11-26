@@ -1,117 +1,136 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Platform, TouchableOpacity, View, Animated, Text, Dimensions, ScrollView } from 'react-native';
-import { COLORS,  SIZES, FONTS } from '../constants/theme';
-import { useTheme } from '@react-navigation/native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    widthPercentageToDP as wp,
-    heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
-import { IMAGES } from '../constants/Images';
-import { GlobalStyleSheet } from '../constants/StyleSheet';
-import DropShadow from 'react-native-drop-shadow';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+    View,
+    TouchableOpacity,
+    Text,
+    ScrollView,
+    StyleSheet,
+} from "react-native";
+import { useTheme } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Ionicons from "react-native-vector-icons/Ionicons";
+
+import { COLORS, FONTS } from "../constants/theme";
+import { IMAGES } from "../constants/Images"; // <== keep if you still use elsewhere, otherwise can remove
+import { GlobalStyleSheet } from "../constants/StyleSheet";
+
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetScrollView,
+} from "@gorhom/bottom-sheet";
 
 const companyList = [
     {
         id: 0,
-        name: 'W3itexperts',
-        role: 'Super Admin',
-        owner: 'Kuldeep',
-        initial: 'W',
-        initialColor:"#FFFFFF",
-        roleColor: '#2648E7',        
-        roleTextColor: '#2648E7',
-        bgColor: '#E8ECFF',         
-        borderColor: '#2648E7',
+        name: "W3itexperts",
+        role: "Super Admin",
+        owner: "Kuldeep",
+        initial: "W",
+        initialColor: "#FFFFFF",
+        roleColor: "#2648E7",
+        roleTextColor: "#2648E7",
+        bgColor: "#E8ECFF",
+        borderColor: "#2648E7",
     },
     {
         id: 1,
-        name: 'DexignZone',
-        role: 'Client',
-        owner: 'Kuldeep',
-        initial: 'D',
-        initialColor:"#6E2820",
-        roleColor: '#FADBD7',         
-        roleTextColor: '#D23131',
-        bgColor: 'rgba(250,219,215,0.20)',          
-        borderColor: 'transparent',
+        name: "DexignZone",
+        role: "Client",
+        owner: "Kuldeep",
+        initial: "D",
+        initialColor: "#6E2820",
+        roleColor: "#FADBD7",
+        roleTextColor: "#D23131",
+        bgColor: "rgba(250,219,215,0.20)",
+        borderColor: "transparent",
     },
 ];
 
 type Props = {
-    state : any,
-    navigation : any,
-    descriptors : any,
-    openCompanySheet: () => void,
-    bottomSheetRef: any; // 👈 add this
-}
+    state: any;
+    navigation: any;
+    descriptors: any;
+    openCompanySheet?: () => void; // still optional if you want to use from parent
+};
 
-const BottomTab = ({ state, descriptors, navigation,openCompanySheet } : Props) => {
+const BottomTab: React.FC<Props> = ({ state, descriptors, navigation }) => {
 
     const theme = useTheme();
-    const { colors } : {colors : any} = theme;
+    const { colors }: { colors: any } = theme;
+    const insets = useSafeAreaInsets();
 
+    const [selectedCompany, setSelectedCompany] = useState(0);
+
+    const bottomSheetRef = useRef<BottomSheet>(null);
+    const snapPoints = useMemo(() => ["40%"], []);
+
+    // Close sheet on tab change
     useEffect(() => {
         if (bottomSheetRef?.current) {
-            bottomSheetRef.current.close(); // 👈 Close sheet on tab change
+            bottomSheetRef.current.close();
         }
     }, [state.index]);
 
-    const [tabWidth, setWidth] = useState(wp('100%'));
-
-    const tabWD =
-        tabWidth < SIZES.container ? tabWidth / 5 : SIZES.container / 5;
-
-    const circlePosition = useRef(
-        new Animated.Value(0),
-    ).current;
-
-    Dimensions.addEventListener('change', val => {
-        setWidth(val.window.width);
-    });
-    
-    useEffect(() => {
-        Animated.spring(circlePosition, {
-            toValue: state.index * tabWD,
-            useNativeDriver: true,
-        }).start();
-    },[state.index,tabWidth])
-
-
-    const onTabPress = (index: number) => {
-        const tabW =
-            tabWidth < SIZES.container ? tabWidth / 5 : SIZES.container / 5; // Adjust this according to your tab width
-
-        Animated.spring(circlePosition, {
-            toValue: index * tabW,
-            useNativeDriver: true,
-        }).start();
-    };
-
-    const [Select, setSelect] = useState(0)
-
-    const bottomSheetRef = useRef<BottomSheet>(null);
-    const snapPoints = useMemo(() => ['40%'], []);
-
     const handleSheetChanges = useCallback((index: number) => {
-        console.log('handleSheetChanges', index);
+        console.log("handleSheetChanges", index);
     }, []);
 
     const renderBackdrop = useCallback(
-        (props:any) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-          />
+        (props: any) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+            />
         ),
         []
     );
 
+    const handleTabPress = (route: any, index: number, label: string, isFocused: boolean) => {
+        if (label === "Company") {
+            bottomSheetRef.current?.snapToIndex(0); // open company sheet
+            return;
+        }
+
+        if (label === "Messages") {
+            navigation.navigate("Messages");
+            return;
+        }
+
+        const event = navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+        });
+
+        if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate({ name: route.name, merge: true });
+        }
+    };
+
+    const getIconName = (label: string) => {
+        switch (label) {
+            case "Estimates":
+                return "document-text-outline";
+            case "Project":
+                return "briefcase-outline";
+            case "Contacts":
+                return "people-outline";
+            case "Messages":
+                return "mail-outline";
+            case "Home":
+                return "home-outline";
+            case "My Task":
+                return "person-outline"
+            default:
+                return "home-outline";
+        }
+    };
 
     return (
         <>
-            <BottomSheet
+            {/* ---------- Company Bottom Sheet ---------- */}
+            {/* <BottomSheet
                 ref={bottomSheetRef}
                 index={-1}
                 snapPoints={snapPoints}
@@ -119,237 +138,258 @@ const BottomTab = ({ state, descriptors, navigation,openCompanySheet } : Props) 
                 backdropComponent={renderBackdrop}
                 onChange={handleSheetChanges}
                 backgroundStyle={{
-                    backgroundColor:colors.background,
-                    borderTopLeftRadius:20,
-                    borderTopRightRadius:20,
+                    backgroundColor: colors.background,
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
                 }}
                 handleIndicatorStyle={{
-                    backgroundColor:colors.background,
-                    width:100,
-                    height:4,
+                    backgroundColor: colors.background,
+                    width: 100,
+                    height: 4,
                 }}
             >
                 <BottomSheetScrollView
                     contentContainerStyle={{
-                        paddingBottom:200,
+                        paddingBottom: 200,
                     }}
                 >
-                    <View style={[GlobalStyleSheet.container,{flex:1,paddingTop:0,padding:20}]}>
-                         <Text style={[FONTS.fontRegular,{fontSize:18,color:colors.title,marginBottom:10}]}>Select Company</Text>
-                         <ScrollView
+                    <View
+                        style={[
+                            GlobalStyleSheet.container,
+                            { flex: 1, paddingTop: 0, padding: 20 },
+                        ]}
+                    >
+                        <Text
+                            style={[
+                                FONTS.fontRegular,
+                                {
+                                    fontSize: 18,
+                                    color: colors.title,
+                                    marginBottom: 10,
+                                },
+                            ]}
+                        >
+                            Select Company
+                        </Text>
+                        <ScrollView
                             showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{flexGrow:1}}
-                         >
-                            <View style={{flex:1}}>
-                                <View style={[GlobalStyleSheet.row,{paddingTop:10}]}>
-                                    {companyList.map((data:any,index:any) => {
-                                        return(
-                                            <View 
+                            contentContainerStyle={{ flexGrow: 1 }}
+                        >
+                            <View style={{ flex: 1 }}>
+                                <View style={[GlobalStyleSheet.row, { paddingTop: 10 }]}>
+                                    {companyList.map((data: any, index: number) => {
+                                        const isSelected = selectedCompany === data.id;
+                                        return (
+                                            <View
                                                 key={index}
-                                                style={[GlobalStyleSheet.col50,{marginBottom:10}]}
+                                                style={[GlobalStyleSheet.col50, { marginBottom: 10 }]}
                                             >
                                                 <TouchableOpacity
-                                                    onPress={() => setSelect(data.id)}
+                                                    onPress={() => setSelectedCompany(data.id)}
                                                     style={[
                                                         {
-                                                            padding:20,
-                                                            backgroundColor:colors.card,
-                                                            borderRadius:8,
-                                                            borderWidth:1,
-                                                            borderColor:'transparent'
-                                                        },Select === data.id && {
-                                                            backgroundColor:data.bgColor,
-                                                            borderColor:data.roleColor
-                                                        }
+                                                            padding: 20,
+                                                            backgroundColor: colors.card,
+                                                            borderRadius: 8,
+                                                            borderWidth: 1,
+                                                            borderColor: "transparent",
+                                                        },
+                                                        isSelected && {
+                                                            backgroundColor: data.bgColor,
+                                                            borderColor: data.roleColor,
+                                                        },
                                                     ]}
                                                 >
-                                                    <View style={{alignItems:'center'}}>
+                                                    <View style={{ alignItems: "center" }}>
                                                         <View
                                                             style={{
-                                                                height:50,
-                                                                width:50,
-                                                                borderRadius:20,
-                                                                backgroundColor:data.roleColor,
-                                                                alignItems:'center',
-                                                                justifyContent:'center'
+                                                                height: 50,
+                                                                width: 50,
+                                                                borderRadius: 20,
+                                                                backgroundColor: data.roleColor,
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
                                                             }}
                                                         >
-                                                            <Text style={{...FONTS.fontBold,fontSize:22,color:data.initialColor}}>{data.initial}</Text>
+                                                            <Text
+                                                                style={{
+                                                                    ...FONTS.fontBold,
+                                                                    fontSize: 22,
+                                                                    color: data.initialColor,
+                                                                }}
+                                                            >
+                                                                {data.initial}
+                                                            </Text>
                                                         </View>
-                                                        <View style={{marginTop:11}}>
-                                                            <Text style={[FONTS.fontLg,{fontSize:18,color:colors.title,textAlign:'center'}]}>{data.name}</Text>
-                                                            <Text style={[FONTS.fontXs,{color:data.roleTextColor,marginTop:5,textAlign:'center'}]}>{data.role}</Text>
+                                                        <View style={{ marginTop: 11 }}>
+                                                            <Text
+                                                                style={[
+                                                                    FONTS.fontLg,
+                                                                    {
+                                                                        fontSize: 18,
+                                                                        color: colors.title,
+                                                                        textAlign: "center",
+                                                                    },
+                                                                ]}
+                                                            >
+                                                                {data.name}
+                                                            </Text>
+                                                            <Text
+                                                                style={[
+                                                                    FONTS.fontXs,
+                                                                    {
+                                                                        color: data.roleTextColor,
+                                                                        marginTop: 5,
+                                                                        textAlign: "center",
+                                                                    },
+                                                                ]}
+                                                            >
+                                                                {data.role}
+                                                            </Text>
                                                         </View>
-                                                        <View style={{marginTop:10}}>
-                                                            <Text style={[FONTS.fontSm,{color:colors.text,textAlign:'center'}]}>Owner: {data.owner}</Text>
+                                                        <View style={{ marginTop: 10 }}>
+                                                            <Text
+                                                                style={[
+                                                                    FONTS.fontSm,
+                                                                    {
+                                                                        color: colors.text,
+                                                                        textAlign: "center",
+                                                                    },
+                                                                ]}
+                                                            >
+                                                                Owner: {data.owner}
+                                                            </Text>
                                                         </View>
                                                     </View>
                                                 </TouchableOpacity>
                                             </View>
-                                        )
+                                        );
                                     })}
                                 </View>
                             </View>
-                         </ScrollView>
+                        </ScrollView>
                     </View>
                 </BottomSheetScrollView>
-            </BottomSheet>
-            <DropShadow
-                style={[{
-                    shadowColor: '#000',
-                    shadowOffset: {
-                        width: 0,
-                        height: 0,
-                    },
-                    shadowOpacity: .10,
-                    shadowRadius: 30,
-                },Platform.OS === 'ios' && {
-                    backgroundColor:colors.card,
-                }]}
+            </BottomSheet> */}
+
+            {/* ---------- Floating Pill Bottom Tab ---------- */}
+            <View
+                style={[
+                    styles.FloaterWrap,
+                    { paddingBottom: Math.max(insets.bottom, 8) },
+                ]}
+                pointerEvents="box-none"
             >
-                <View
-                    style={[{
-                        height: 60,
-                        backgroundColor:colors.card,
-                        borderTopLeftRadius:10,
-                        borderTopRightRadius:10
-                    }]}>
+                <View style={[styles.SubFooter, { backgroundColor: COLORS.primary }]}>
+                    {state.routes.map((route: any, index: number) => {
+                        const { options } = descriptors[route.key];
+                        const label =
+                            options.tabBarLabel !== undefined
+                                ? options.tabBarLabel
+                                : options.title !== undefined
+                                    ? options.title
+                                    : route.name;
 
-                    <View style={[GlobalStyleSheet.container,{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: 20,
-                        paddingTop: 0,
-                        paddingBottom: 0,
-                    }]}>
-                        {state.routes.map((route:any, index:any) => {
-                            const { options } = descriptors[route.key];
-                            const label =
-                                options.tabBarLabel !== undefined
-                                    ? options.tabBarLabel
-                                    : options.title !== undefined
-                                        ? options.title
-                                        : route.name;
+                        const isFocused = state.index === index;
 
-                            const isFocused = state.index === index;
-
-
-                            const iconTranslateY = useRef(new Animated.Value(0)).current;
-                            Animated.timing(iconTranslateY, {
-                                toValue: isFocused ? -18 : 0,
-                                duration: 200,
-                                useNativeDriver: true,
-                            }).start();
-
-                            // const onPress = () => {
-                            //     if(label == "Messages"){
-                            //         navigation.navigate('Messages');
-                            //     }
-                            //     const event = navigation.emit({
-                            //         type: 'tabPress',
-                            //         target: route.key,
-                            //         canPreventDefault: true,
-                            //     });
-
-                            //     if (!isFocused && !event.defaultPrevented) {
-                            //         navigation.navigate({ name: route.name, merge: true });
-                            //         onTabPress(index);
-                            //     }
-                            // };
-
-                            const onPress = () => {
-                                if (label === "Company") {
-                                    bottomSheetRef.current?.snapToIndex(0); // Open sheet
-                                    // setPendingNavigation(route.name); // Store the route name
-                                    return;
-                                }
-
-                                if (label === "Messages") {
-                                    navigation.navigate('Messages');
-                                    return;
-                                }
-
-                                const event = navigation.emit({
-                                    type: 'tabPress',
-                                    target: route.key,
-                                    canPreventDefault: true,
-                                });
-
-                                if (!isFocused && !event.defaultPrevented) {
-                                    navigation.navigate({ name: route.name, merge: true });
-                                    onTabPress(index);
-                                }
-                            };
-
-                            
-                            if(label === 'Company'){
-                            return(
-                                <View
-                                    key={index}
-                                    style={{
-                                        width:'20%',
-                                        alignItems:'center',
-                                    }}
+                        // Center button for Company (like the plus in the example)
+                        if (label === "Company") {
+                            return (
+                                <TouchableOpacity
+                                    key={route.key}
+                                    style={styles.centerIconWrapper}
+                                    activeOpacity={0.9}
+                                    onPress={() => handleTabPress(route, index, label, isFocused)}
                                 >
-                                    <TouchableOpacity
-                                        activeOpacity={.8}
-                                        onPress={onPress}
-                                        style={{
-                                            height:60,
-                                            width:60,
-                                            borderRadius:50,
-                                            alignItems:'center',
-                                            justifyContent:'center',
-                                        }}
-                                    >
-                                        <View
-                                            style={[{
-                                                height:40,
-                                                width:40,
-                                                borderRadius:50,
-                                                backgroundColor:COLORS.primary,
-                                                alignItems:'center',
-                                                justifyContent:'center',
-                                            }]}
-                                        >
-                                            <Text style={{...FONTS.fontBold,fontSize:18,color:COLORS.card,lineHeight:22}}>W</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </View>
-                            )
-                            }else{
-                                return (
-                                    <TouchableOpacity
-                                        key={index}
-                                        activeOpacity={.8}
-                                        accessibilityRole="button"
-                                        accessibilityState={isFocused ? { selected: true } : {}}
-                                        accessibilityLabel={options.tabBarAccessibilityLabel}
-                                        testID={options.tabBarTestID}
-                                        onPress={onPress}
-                                        style={{ flex: 1, alignItems: 'center', height: '100%', justifyContent: 'center', marginTop: 5 }}
-                                    >
-                                        <Image
-                                            style={{ width: 18, height: 18, tintColor: isFocused ? COLORS.primary : colors.text }}
-                                            source={
-                                                label == 'Estimates' ? IMAGES.Estimates :
-                                                label == 'Project' ? IMAGES.Project :
-                                                label == 'Contacts' ? IMAGES.Contacts :
-                                                label == 'Messages' ? IMAGES.Messages : IMAGES.home
-                                            }
-                                            resizeMode='center'
-        
-                                        />
-                                        <Text style={[{...FONTS.fontMedium,fontSize:12,color:isFocused ? COLORS.primary : colors.text}]}>{label}</Text>
-                                    </TouchableOpacity>
-                                );
-                            }
-                        })}
-                    </View>
+                                    {/* You can change to 'business-outline' if you want a building icon */}
+                                    <Ionicons name="add" size={30} color="#fff" />
+                                </TouchableOpacity>
+                            );
+                        }
+
+                        const iconName = getIconName(label);
+                        const iconColor = isFocused ? "#fff" : "rgba(255,255,255,0.75)";
+                        const textColor = isFocused ? "#fff" : "rgba(255,255,255,0.75)";
+
+                        return (
+                            <TouchableOpacity
+                                key={route.key}
+                                style={styles.iconWrapper}
+                                activeOpacity={0.85}
+                                accessibilityRole="button"
+                                accessibilityState={isFocused ? { selected: true } : {}}
+                                accessibilityLabel={options.tabBarAccessibilityLabel}
+                                testID={options.tabBarTestID}
+                                onPress={() => handleTabPress(route, index, label, isFocused)}
+                            >
+                                <Ionicons name={iconName} size={24} color={iconColor} />
+                                <Text
+                                    style={[
+                                        styles.iconLabel,
+                                        FONTS.fontXs,
+                                        { color: textColor },
+                                    ]}
+                                >
+                                    {label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
-            </DropShadow>
+            </View>
         </>
     );
 };
+
+const styles = StyleSheet.create({
+    FloaterWrap: {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: "center",
+    },
+    SubFooter: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-around",
+        paddingHorizontal: 16,
+        height: 80,
+        marginHorizontal: 12,
+        marginBottom: 12,
+        borderRadius: 30,
+
+        // floaty shadow
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 12,
+    },
+    iconWrapper: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    centerIconWrapper: {
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: "rgba(255,255,255,0.18)",
+        alignItems: "center",
+        justifyContent: "center",
+        marginTop: -10,
+        elevation: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+    },
+    iconLabel: {
+        color: "#fff",
+        fontSize: 11,
+        marginTop: 4,
+    },
+});
 
 export default BottomTab;
