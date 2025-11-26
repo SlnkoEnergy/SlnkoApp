@@ -32,7 +32,11 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const [name, setName] = useState("");
@@ -42,6 +46,8 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogMessage, setDialogMessage] = useState("");
+
+  const [invalidCredentials, setInvalidCredentials] = useState(false);
 
   const dispatch = useAppDispatch();
   const [login, { isLoading }] = useLoginMutation();
@@ -53,9 +59,11 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   };
   const hideDialog = () => setDialogVisible(false);
 
- const handleLogin = async () => {
+const handleLogin = async () => {
   const user = name.trim();
   const pass = password.trim();
+
+  setInvalidCredentials(false);
 
   if (!user || !pass) {
     showDialog("Missing Fields", "Please enter both username and password.");
@@ -65,6 +73,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
   try {
     Keyboard.dismiss();
+
 
     const loginResponse = await login({ name: user, password: pass }).unwrap();
     const { token, userId } = loginResponse ?? {};
@@ -79,6 +88,7 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
     const users = await dispatch(
       loginSlice.endpoints.getAllUsersIt.initiate()
     ).unwrap();
+
     const matchedUser = users.find(
       (item: any) => String(item._id) === String(userId)
     );
@@ -98,38 +108,46 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
         role: matchedUser.role,
         createdAt: matchedUser.createdAt,
         userID: matchedUser._id,
+        about: matchedUser.about,
+        location: matchedUser.location,
+        attachment_url: matchedUser.attachment_url,
       })
     );
 
     setPassword("");
 
-
-    // navigation.navigate("DrawerNavigation" as any, { screen: "Home" } as any);
-
     navigation.reset({
-  index: 0,
-  routes: [{ name: 'DrawerNavigation' }],
-});
-
-
-
+      index: 0,
+      routes: [{ name: "DrawerNavigation" as any }],
+    });
   } catch (err: any) {
-    const msg =
-      err?.status === 401 || err?.originalStatus === 401
-        ? "Incorrect username or password."
-        : "Unable to sign in. Check your connection and try again.";
+    const is401 = err?.status === 401 || err?.originalStatus === 401;
+
+    if (is401) {
+      setInvalidCredentials(true);
+    }
+
+    const msg = is401
+      ? "Incorrect username or password."
+      : "Unable to sign in. Check your connection and try again.";
+
     showDialog("Login Failed", msg);
   }
 };
 
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <View style={GlobalStyleSheet.gradientBg} />
 
-          <Animated.View style={[GlobalStyleSheet.container, { opacity: fadeAnim }]}>
+          <Animated.View
+            style={[GlobalStyleSheet.container, { opacity: fadeAnim }]}
+          >
             <Image
               source={IMAGES.protrac_logo}
               style={GlobalStyleSheet.logo}
@@ -144,7 +162,10 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
                 placeholder="Name or Employee ID"
                 placeholderTextColor={colors.placeholder ?? "#48709e"}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (invalidCredentials) setInvalidCredentials(false);
+                }}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="next"
@@ -162,17 +183,42 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
                 placeholderTextColor={colors.placeholder ?? "#48709e"}
                 secureTextEntry={!showPassword}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (invalidCredentials) setInvalidCredentials(false);
+                }}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="go"
                 onSubmitEditing={handleLogin}
                 textContentType="password"
               />
-              <TouchableOpacity onPress={() => setShowPassword((s) => !s)} accessibilityRole="button">
-                <Icon name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#003366" />
+              <TouchableOpacity
+                onPress={() => setShowPassword((s) => !s)}
+                accessibilityRole="button"
+              >
+                <Icon
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color="#003366"
+                />
               </TouchableOpacity>
             </View>
+
+         {invalidCredentials && (
+  <Text
+    style={{
+      color: "#D32F2F",
+      fontSize: 12,
+      marginTop: 6,
+      marginBottom: 4,
+      alignSelf: "flex-start",
+    }}
+  >
+    Invalid username or password. Please try again.
+  </Text>
+)}
+
 
             {/* Login Button */}
             <Button
@@ -198,8 +244,14 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
           </Animated.View>
 
           <Portal>
-            <Dialog visible={dialogVisible} onDismiss={hideDialog} style={GlobalStyleSheet.dialog}>
-              <Dialog.Title style={GlobalStyleSheet.dialogTitle}>{dialogTitle}</Dialog.Title>
+            <Dialog
+              visible={dialogVisible}
+              onDismiss={hideDialog}
+              style={GlobalStyleSheet.dialog}
+            >
+              <Dialog.Title style={GlobalStyleSheet.dialogTitle}>
+                {dialogTitle}
+              </Dialog.Title>
               <Dialog.Content>
                 <Text>{dialogMessage}</Text>
               </Dialog.Content>
