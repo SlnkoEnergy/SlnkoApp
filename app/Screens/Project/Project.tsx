@@ -1,792 +1,650 @@
-import React, { useState } from "react";
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   View,
-  ScrollView,
   Text,
-  TouchableOpacity,
+  SafeAreaView,
+  ImageBackground,
+  ScrollView,
   StyleSheet,
-  Modal,
+  Animated,
   TextInput,
-} from "react-native";
-import { StackScreenProps } from "@react-navigation/stack";
-import { RootStackParamList } from "../../Navigations/RootStackParamList";
-import Icon from "react-native-vector-icons/Feather";
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Platform,
+  StatusBar,
+} from 'react-native';
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../../Navigations/RootStackParamList';
+import { useNavigation, useTheme } from '@react-navigation/native';
+import { GlobalStyleSheet } from '../../constants/StyleSheet';
+import { IMAGES } from '../../constants/Images';
+import { COLORS, FONTS } from '../../constants/theme';
+import DropShadow from 'react-native-drop-shadow';
+import FeatherIcon from 'react-native-vector-icons/Feather';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
+import ProgressBar from '../../components/ProgressBar';
+import Progresscircle from '../../components/Progresscircle';
 
-import { COLORS } from "../../constants/theme";
-import SubHeader from "../../layout/SubHeader";
+import { useGetAllDprQuery } from '../../store/slices/dprSlice';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { DrawerParamList } from '../../Navigations/DrawerParamList';
+import RecentTasks, { RecentTask } from './RecentTask';
 
-type ProjectScreenProps = StackScreenProps<RootStackParamList, "Project">;
+const DROPDOWN_OPTIONS = [
+  'All',
+  'Ongoing',
+  'Completed',
+  'Not Started',
+  'On Hold',
+];
 
-/* --------- STATUS LABELS --------- */
+type ProjectScreenProps = StackScreenProps<RootStackParamList, 'Project'>;
 
-const statusLabelMap = {
-  todo: "TO DO",
-  "in-progress": "IN PROGRESS",
-  complete: "COMPLETE",
-} as const;
 
-type StatusKey = keyof typeof statusLabelMap;
-
-/* --- Single status row used inside Modal --- */
-type StatusRowProps = {
-  label: string;
-  variant: StatusKey;
-  selected: boolean;
-  onPress: () => void;
+type DM = {
+  id: string;
+  name: string;
+  lastMessage?: string;
+  updatedAt?: string;
+  badgeCount?: number;
+  iconBg?: string;
 };
 
-const StatusRow: React.FC<StatusRowProps> = ({
-  label,
-  variant,
-  selected,
-  onPress,
-}) => {
-  const isComplete = variant === "complete";
-
-  return (
-    <TouchableOpacity style={styles.statusRowItem} onPress={onPress}>
-      <View style={styles.statusRowLeft}>
-        {/* Left icon / circle */}
-        {isComplete ? (
-          <View style={[styles.statusCircle, styles.statusCircleComplete]}>
-            <Icon name="check" size={12} color={COLORS.white} />
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.statusCircle,
-              variant === "todo" && !selected && styles.statusCircleTodo,
-              selected && variant === "in-progress"
-                ? styles.statusCircleActive
-                : styles.statusCircleIdle,
-            ]}
-          >
-            {selected && variant === "in-progress" && (
-              <View style={styles.statusCircleInner} />
-            )}
-          </View>
-        )}
-
-        <Text
-          style={[
-            styles.statusRowLabel,
-            selected && styles.statusRowLabelSelected,
-          ]}
-        >
-          {label}
-        </Text>
-      </View>
-
-      {/* Right check icon when selected */}
-      {selected && (
-        <Icon
-          name="check-circle"
-          size={18}
-          color={isComplete ? COLORS.success : COLORS.primary}
-        />
-      )}
-    </TouchableOpacity>
+const Project = ({ navigation }: ProjectScreenProps) => {
+  const theme = useTheme();
+  const { colors }: { colors: any } = theme;
+  const drawerNavigation =
+    useNavigation<DrawerNavigationProp<DrawerParamList>>();
+    const directMessages: DM[] = useMemo(() => {
+  const demo: DM[] = [
+    { id: "dm-1", name: "Rahul", lastMessage: "Let’s sync at 4pm", updatedAt: new Date().toISOString(), badgeCount: 2, iconBg: "#7C3AED22" },
+    { id: "dm-2", name: "Gagan", lastMessage: "PO approved ✅",     updatedAt: "2025-11-24T10:20:00Z",  badgeCount: 0, iconBg: "#0EA5E922" },
+  ];
+  return demo.sort(
+    (a, b) =>
+      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
   );
-};
+}, []);
 
-/* --------- TASK TYPE COMPONENTS --------- */
+  const [showSearch, setShowSearch] = useState(false);
+  const translateX = useRef(new Animated.Value(-300)).current;
+  const openSearchBar = () => {
+    setShowSearch(true);
+    Animated.timing(translateX, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+  const closeSearchBar = () => {
+    Animated.timing(translateX, {
+      toValue: 400,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowSearch(false);
+      translateX.setValue(-300);
+    });
+  };
 
-type TaskTypeKey = "task" | "milestone" | "form" | "note";
+  const [selected, setSelected] = useState('All');
+  const [isOpen, setIsOpen] = useState(false);
+  const [animation] = useState(new Animated.Value(0));
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+    Animated.timing(animation, {
+      toValue: isOpen ? 0 : 1,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+  const handleSelect = (value: string) => {
+    setSelected(value);
+    toggleDropdown();
+  };
+  const heightInterpolate = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, DROPDOWN_OPTIONS.length * 33],
+  });
 
-type TaskTypeRowProps = {
-  label: string;
-  iconName: string;
-  selected?: boolean;
-  comingSoon?: boolean;
-  onPress?: () => void;
-};
+  const { data: apiRes, isFetching } = useGetAllDprQuery({
+    page: 1,
+    limit: 20,
+  });
 
-const TaskTypeRow: React.FC<TaskTypeRowProps> = ({
-  label,
-  iconName,
-  selected,
-  comingSoon,
+  // console.log("apiRes:", apiRes);
+  
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const chipRowScaleY = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [1, 0.92],
+    extrapolate: 'clamp',
+  });
+
+  const chipRowTranslateY = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [0, -6],
+    extrapolate: 'clamp',
+  });
+
+  const chipScale = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [1, 0.93],
+    extrapolate: 'clamp',
+  });
+
+  const chipOpacity = scrollY.interpolate({
+    inputRange: [0, 60],
+    outputRange: [1, 0.85],
+    extrapolate: 'clamp',
+  });
+
+  const IMAGE = IMAGES.projectpic7;
+
+const cards = useMemo(() => {
+  const list = apiRes?.data ?? [];
+
+  return list.map((item: any) => {
+    let progress = 0;
+    if (typeof item?.percent_complete === 'number') {
+      progress = Math.max(0, Math.min(1, item.percent_complete / 100));
+    } else if (item?.work_completion?.unit === 'percentage') {
+      const v = Number(item?.work_completion?.value ?? 0);
+      progress = Math.max(0, Math.min(1, v / 100));
+    }
+
+    const title =
+      item?.activity_id?.name ||
+      item?.activity_id ||
+      '-';
+
+    const code = item?.project_id?.code || '';
+
+    return {
+      title,        
+      code,          
+      progress,       
+      view: 'grid',
+      images: [IMAGE],
+      _raw: item,
+    };
+  });
+}, [apiRes]);
+
+  const StatChip = ({
+    icon,
+    title,
+    subtitle,
+    colors,
+  }: {
+    icon: string;
+    title: string;
+    subtitle: string;
+    colors: any;
+  }) => (
+    <View
+      style={[
+        GlobalStyleSheet.glassChip,
+        {
+          width: 110,
+          minHeight: 68,
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          justifyContent: 'center',
+          backgroundColor: colors.card,
+        },
+      ]}
+    >
+      <FeatherIcon
+        name={icon as any}
+        size={18}
+        color={COLORS.primary}
+        style={{ opacity: 0.95, marginBottom: 8 }}
+      />
+      <Text
+        numberOfLines={1}
+        style={{ ...FONTS.fontMedium, fontSize: 13, color: colors.title }}
+      >
+        {title}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{
+          ...FONTS.font,
+          fontSize: 12,
+          color: colors.text,
+          opacity: 0.8,
+          marginTop: 2,
+        }}
+      >
+        {subtitle}
+      </Text>
+    </View>
+  );
+
+const ImageProjectCard = ({
+  data,
+  colors,
   onPress,
+}: {
+  data: any;
+  colors: any;
+  onPress: () => void;
 }) => {
-  const disabled = !!comingSoon;
+  const cover = data?.images?.[0];
+
+  // animate progress (0..1) -> width + chip pop
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const chipScale = useRef(new Animated.Value(0.9)).current;
+  const chipOpacity = useRef(new Animated.Value(0.0)).current;
+
+  useEffect(() => {
+    const to = typeof data?.progress === 'number' ? Math.max(0, Math.min(1, data.progress)) : 0;
+    Animated.parallel([
+      Animated.timing(progressAnim, { toValue: to, duration: 600, useNativeDriver: false }),
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(chipOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+          Animated.timing(chipScale, { toValue: 1.03, duration: 180, useNativeDriver: true }),
+        ]),
+        Animated.timing(chipScale, { toValue: 1, duration: 140, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [data?.progress, progressAnim, chipScale, chipOpacity]);
+
+  const barWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <TouchableOpacity
-      style={styles.taskTypeRow}
-      disabled={disabled}
+      activeOpacity={0.9}
       onPress={onPress}
-      activeOpacity={disabled ? 1 : 0.7}
+      style={{
+        backgroundColor: 'transparent',
+        borderRadius: 14,
+        overflow: 'hidden',
+        marginBottom: 14,
+      }}
     >
-      <View style={styles.taskTypeLeft}>
-        <Icon
-          name={iconName}
-          size={18}
-          color={
-            disabled
-              ? COLORS.textMuted
-              : selected
-                ? COLORS.primary
-                : COLORS.textSecondary
-          }
-          style={{ marginRight: 10 }}
-        />
+      <View
+        style={[
+          {
+            borderRadius: 14,
+            overflow: 'hidden',
+            position: 'relative',
+          },
+          GlobalStyleSheet.glassCard,
+        ]}
+      >
+        <ImageBackground source={cover} resizeMode="cover" style={{ width: '100%', aspectRatio: 1 / 0.6 }}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.35)']}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[GlobalStyleSheet.glassBadge, { position: 'absolute', top: 10, left: 10 }]}>
+            <Text
+              numberOfLines={1}
+              style={{ ...FONTS.fontMedium, fontSize: 12, color: colors.title, opacity: 0.95 }}
+            >
+              {data?.code}
+            </Text>
+          </View>
 
-        <View>
-          <Text
+          {/* Floating arrow */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[GlobalStyleSheet.glassFab, { position: 'absolute', top: 10, right: 10 }]}
+          >
+            <FeatherIcon name="arrow-right" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+
+          <View style={{ position: 'absolute', left: 12, bottom: 20, right: 92 }}>
+            <Text numberOfLines={1} style={{ ...FONTS.fontMedium, fontSize: 15, color: '#fff' }}>
+              {data?.title}
+            </Text>
+          </View>
+
+          <Animated.View
             style={[
-              styles.taskTypeLabel,
-              selected && !disabled && { color: COLORS.primary },
+              GlobalStyleSheet.glassBadge,
+              {
+                position: 'absolute',
+                right: 12,
+                bottom: 20,
+                transform: [{ scale: chipScale }],
+                opacity: chipOpacity,
+              },
             ]}
           >
-            {label}
-          </Text>
+            <Text style={{ ...FONTS.fontMedium, fontSize: 12, color: COLORS.primary }}>
+              {Math.round((data?.progress ?? 0) * 100)}%
+            </Text>
+          </Animated.View>
 
-          {comingSoon && (
-            <Text style={styles.taskTypeComingSoonText}>Coming Soon</Text>
-          )}
-        </View>
+          <View
+            style={{
+              position: 'absolute',
+              left: 10,
+              right: 10,
+              bottom: 12,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor: 'rgba(255,255,255,0.30)',
+              overflow: 'hidden',
+            }}
+          >
+            <Animated.View
+              style={{
+                height: '100%',
+                width: barWidth,
+                borderRadius: 3,
+                backgroundColor: COLORS.primary,
+              }}
+            />
+          </View>
+        </ImageBackground>
       </View>
-
-      {selected && !disabled && (
-        <Icon name="check-circle" size={18} color={COLORS.primary} />
-      )}
     </TouchableOpacity>
   );
 };
 
-/* --------- ACTIVITY TYPES --------- */
+const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => ({
+  id: t._id,
+  title: `${t?.project_id?.name ?? 'Project'} • ${(t?.activity_id?.name || t?.activity_id) ?? 'Activity'}`,
+  updatedAt: t.updatedAt,
+}));
 
-type ActivityEvent = {
-  id: string;
-  kind: "system" | "status" | "comment";
-  createdAt: string;
-  message?: string;
-  author?: string;
-  fromStatus?: StatusKey;
-  toStatus?: StatusKey;
-};
 
-const initialActivity: ActivityEvent[] = [
-  {
-    id: "1",
-    kind: "system",
-    createdAt: "Thursday, 8:20 PM",
-    message: "You created this task",
-  },
-  {
-    id: "2",
-    kind: "status",
-    createdAt: "Thursday, 8:20 PM",
-    message: "You changed status to",
-    fromStatus: "todo",
-    toStatus: "in-progress",
-  },
-  {
-    id: "3",
-    kind: "comment",
-    createdAt: "Thursday, 8:25 PM",
-    author: "Devashish",
-    message: "Hi",
-  },
-  {
-    id: "4",
-    kind: "status",
-    createdAt: "Thursday, 8:26 PM",
-    message: "You changed status to",
-    fromStatus: "in-progress",
-    toStatus: "complete",
-  },
-  {
-    id: "5",
-    kind: "status",
-    createdAt: "Thursday, 8:30 PM",
-    message: "You changed status to",
-    fromStatus: "complete",
-    toStatus: "in-progress",
-  },
-];
 
-/* -------------------------------------------------------------- */
-
-const Project: React.FC<ProjectScreenProps> = ({ route }) => {
-  const activityName = route?.params?.activityName ?? "Task name";
-
-  const [activeTab, setActiveTab] = useState<"details" | "activity">("details");
-  const [statusActiveTab, setStatusActiveTab] =
-    useState<"status" | "taskType">("status");
-  const [status, setStatus] = useState<StatusKey>("in-progress");
-  const [statusModalVisible, setStatusModalVisible] = useState(false);
-
-  const [taskType, setTaskType] = useState<TaskTypeKey>("task");
-
-  const [propertyModalVisible, setPropertyModalVisible] = useState(false);
-
-  const [activity, setActivity] = useState<ActivityEvent[]>(initialActivity);
-  const [commentText, setCommentText] = useState("");
-
-  const openStatusModal = () => setStatusModalVisible(true);
-  const closeStatusModal = () => setStatusModalVisible(false);
-
-  const handleSendComment = () => {
-    const trimmed = commentText.trim();
-    if (!trimmed) return;
-
-    const newEvent: ActivityEvent = {
-      id: Date.now().toString(),
-      kind: "comment",
-      createdAt: "Just now",
-      author: "You",
-      message: trimmed,
-    };
-
-    setActivity((prev) => [...prev, newEvent]);
-    setCommentText("");
-  };
-
-  const renderStatusChip = (value: StatusKey) => {
-    let iconName: string = "circle";
-    let color = COLORS.textSecondary;
-    let bg = COLORS.chipBgNeutral;
-
-    if (value === "in-progress") {
-      iconName = "loader";
-      color = COLORS.info;
-      bg = COLORS.chipBgInfo;
-    } else if (value === "complete") {
-      iconName = "check-circle";
-      color = COLORS.success;
-      bg = COLORS.chipBgSuccess;
-    } else if (value === "todo") {
-      iconName = "clock";
-      color = COLORS.textMuted;
-      bg = COLORS.chipBgNeutral;
-    }
-
-    return (
-      <View style={[styles.activityStatusChip, { backgroundColor: bg }]}>
-        <Icon
-          name={iconName}
-          size={14}
-          color={color}
-          style={{ marginRight: 4 }}
-        />
-        <Text style={[styles.activityStatusChipText, { color }]} numberOfLines={1}>
-          {statusLabelMap[value]}
-        </Text>
-      </View>
-    );
-  };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView
+      style={{ backgroundColor: colors.background, flex: 1, marginBottom: 0 }}
+    >
+      <StatusBar backgroundColor={colors.background} />
+    <View style={[GlobalStyleSheet.container, { padding: 0 }]}>
+  {/* Top app bar */}
+  <View
+    style={[
+      GlobalStyleSheet.flexcenter,
+      {
+        height: 60,
+        zIndex: 11,
+        backgroundColor: colors.background,
+        paddingHorizontal: 20,
+      },
+    ]}
+  >
+    <TouchableOpacity onPress={() => drawerNavigation.openDrawer()} style={{ flex: 1 }}>
+      <Image style={{ height: 16, width: 24 }} tintColor={colors.title} resizeMode="contain" source={IMAGES.menu} />
+    </TouchableOpacity>
 
+    <TouchableOpacity
+      activeOpacity={0.5}
+      onPress={() => navigation.navigate('Notification')}
+      style={{
+        padding: 5,
+        height: 40,
+        width: 40,
+        borderRadius: 30,
+        backgroundColor: 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'absolute',
+        right: 15,
+      }}
+    >
+      <FeatherIcon name="bell" color={colors.text} size={20} />
+      <View
+        style={{
+          height: 10,
+          width: 10,
+          borderRadius: 5,
+          backgroundColor: '#EA4230',
+          borderWidth: 2,
+          borderColor: colors.card,
+          position: 'absolute',
+          right: 10,
+          top: 10,
+        }}
+      />
+    </TouchableOpacity>
+  </View>
+
+  {/* Scrollable content (everything below the app bar) */}
+  <Animated.ScrollView
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{ paddingBottom: 24 }}
+    scrollEventThrottle={16}
+    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+  >
+    {/* Filter row (All + search + +Project) */}
+    <View style={[GlobalStyleSheet.flexcenter, { paddingHorizontal: 20, marginBottom: 10 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+        <View>
+          <TouchableOpacity
+            onPress={toggleDropdown}
+            activeOpacity={0.5}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+          >
+            <Text style={[FONTS.fontLg, { color: colors.title }]}>{selected}</Text>
+            <FeatherIcon size={16} color={colors.text} name={isOpen ? 'chevron-up' : 'chevron-down'} />
+          </TouchableOpacity>
+
+          {/* Dropdown */}
+          <Animated.View
+            style={{
+              width: 200,
+              height: heightInterpolate,
+              position: 'absolute',
+              top: 40,
+              zIndex: 99,
+              overflow: 'hidden',
+              backgroundColor: colors.card,
+              borderRadius: 8,
+              elevation: 5,
+            }}
+          >
+            <FlatList
+              data={DROPDOWN_OPTIONS}
+              keyExtractor={(item) => item}
+              renderItem={({ item }: any) => (
+                <TouchableOpacity
+                  onPress={() => handleSelect(item)}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 20,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <View
+                    style={[
+                      {
+                        height: 8,
+                        width: 8,
+                        borderRadius: 4,
+                        backgroundColor: colors.text,
+                      },
+                      item === 'Ongoing' && { backgroundColor: '#419A90' },
+                      item === 'Completed' && { backgroundColor: '#6A38FF' },
+                      item === 'On Hold' && { backgroundColor: '#E8B73D' },
+                      item === 'Not Started' && { backgroundColor: '#DD1951' },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      FONTS.font,
+                      FONTS.fontMedium,
+                      { color: colors.text },
+                      item === 'Ongoing' && { color: '#419A90' },
+                      item === 'Completed' && { color: '#6A38FF' },
+                      item === 'On Hold' && { color: '#E8B73D' },
+                      item === 'Not Started' && { color: '#DD1951' },
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </Animated.View>
+        </View>
+
+        <TouchableOpacity onPress={openSearchBar} activeOpacity={0.5}>
+          <FeatherIcon color={COLORS.primary} size={16} name="search" />
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity onPress={() => navigation.navigate('CreateProject')} activeOpacity={0.5} style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        <FeatherIcon color={COLORS.primary} size={16} name="plus" />
+        <Text style={{ ...FONTS.fontMedium, fontSize: 15, color: COLORS.primary, lineHeight: 20 }}>Project</Text>
+      </TouchableOpacity>
+
+      {showSearch && (
+        <Animated.View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.background,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            height: 40,
+            width: '65%',
+            position: 'absolute',
+            left: 15,
+            transform: [{ translateX }],
+          }}
+        >
+          <TextInput
+            placeholder="Search..."
+            style={[FONTS.font, FONTS.fontMedium, { color: colors.title, flex: 1 }]}
+            placeholderTextColor={colors.placeholder}
+            multiline
+          />
+          <TouchableOpacity onPress={closeSearchBar}>
+            <FeatherIcon name="x" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
+
+    {/* Chips row */}
+    <Animated.View
+      style={{
+        paddingHorizontal: 20,
+        marginBottom: 12,
+        justifyContent: 'center',
+        transform: [{ translateY: chipRowTranslateY }, { scaleY: chipRowScaleY }],
+      }}
+    >
+      <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingRight: 8 }}>
+        {[
+          { icon: 'send', title: 'Drafts & Sent', subtitle: '0 comments' },
+          { icon: 'calendar', title: 'Today', subtitle: '0 items' },
+          { icon: 'clock', title: 'Upcoming', subtitle: '1 item' },
+          { icon: 'at-sign', title: 'Assigned', subtitle: '0 comments' },
+          { icon: 'activity', title: 'Activity', subtitle: '0' },
+        ].map((c, i) => (
+          <Animated.View key={c.title + i} style={{ transform: [{ scale: chipScale }], opacity: chipOpacity, marginRight: 10 }}>
+            <StatChip icon={c.icon} title={c.title} subtitle={c.subtitle} colors={colors} />
+          </Animated.View>
+        ))}
+      </Animated.ScrollView>
+    </Animated.View>
+
+    {/* Horizontal Project cards right under “All” */}
+    <View style={{ paddingTop: 4, paddingBottom: 8 }}>
+      <FlatList
+        horizontal
+        data={isFetching ? [] : cards}
+        keyExtractor={(_, i) => String(i)}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 15, paddingRight: 24 }}
+        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+        renderItem={({ item }) => (
+          <View style={{ width: 260 }}>
+            <ImageProjectCard
+              data={item}
+              colors={colors}
+              onPress={() => navigation.navigate('ProjectDetails', { data: item })}
+            />
+          </View>
+        )}
+      />
+    </View>
+
+    {/* Recents (vertical list) */}
+    <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+      <RecentTasks
+        tasks={recentData}
+        onPressTask={(t) => navigation.navigate('TaskDetails', { data: t })}
+      />
+    </View>
+    {/* -------- Direct messages -------- */}
+<View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>Direct messages</Text>
+    <FeatherIcon name="chevron-down" size={18} color={colors.text} style={{ opacity: 0.6 }} />
+  </View>
+
+  {directMessages.map((dm) => (
+    <TouchableOpacity
+      key={dm.id}
+      activeOpacity={0.7}
+      style={{ paddingVertical: 12, flexDirection: "row", alignItems: "center", gap: 12 }}
+      // onPress={() => navigation.navigate("DMThread" as never, { data: dm } as never)}
+    >
+      <View
+        style={{
+          height: 28, width: 28, borderRadius: 14,
+          alignItems: "center", justifyContent: "center",
+          backgroundColor: dm.iconBg || "#7C3AED22",
+        }}
+      >
+        <FeatherIcon name="user" size={16} color={colors.text} />
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={1} style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
+          {dm.name}
+        </Text>
+        {!!dm.lastMessage && (
+          <Text numberOfLines={1} style={{ color: colors.text, opacity: 0.6, marginTop: 2 }}>
+            {dm.lastMessage}
+          </Text>
+        )}
+      </View>
+
+      {!!dm.badgeCount && dm.badgeCount > 0 && (
+        <View
+          style={{
+            minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 6,
+            backgroundColor: "#EA4230", alignItems: "center", justifyContent: "center", marginRight: 6,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>{dm.badgeCount}</Text>
+        </View>
+      )}
+
+      <FeatherIcon name="chevron-right" size={18} color={colors.text} style={{ opacity: 0.35 }} />
+    </TouchableOpacity>
+  ))}
+</View>
+
+  </Animated.ScrollView>
+</View>
+    </SafeAreaView>
   );
 };
 
 export default Project;
-
-/* ---------- Styles ---------- */
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-
-  /* Top tabs */
-  tabsWrapper: {
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderColor,
-    shadowColor: COLORS.black,
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
-  },
-  tabsRow: {
-    flexDirection: "row",
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    position: "relative",
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-  },
-  tabTextInactive: {
-    color: COLORS.textMuted,
-  },
-  tabIndicator: {
-    position: "absolute",
-    left: "20%",
-    right: "20%",
-    bottom: 0,
-    height: 2,
-    borderRadius: 999,
-    backgroundColor: COLORS.primary,
-  },
-
-  /* Main content */
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32,
-  },
-
-  titleCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: COLORS.black,
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  listLabel: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  titleText: {
-    color: COLORS.title,
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    marginTop: 4,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: COLORS.accentSoft,
-  },
-  statusPillDivider: {
-    width: 1,
-    height: 14,
-    marginHorizontal: 8,
-    backgroundColor: COLORS.borderColor,
-  },
-  statusPillType: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusPillTypeText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: "500",
-  },
-
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderColor,
-  },
-
-  cardRow: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderColor,
-  },
-
-  statusIconWrapper: {
-    marginRight: 10,
-  },
-  statusOuterDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statusInnerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.primary,
-  },
-
-  sectionLabel: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  statusText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.4,
-    marginTop: 2,
-  },
-
-  rowButtonDesc: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 4,
-  },
-
-  rowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rowIconWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  rowLabel: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-    marginBottom: 2,
-    fontWeight: "500",
-  },
-  rowValue: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-
-  addPropertyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 4,
-  },
-  addPropertyRowDoc: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 8,
-  },
-  addPropertyText: {
-    marginLeft: 6,
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: "600",
-  },
-
-  descriptionPlaceholder: {
-    paddingTop: 6,
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
-
-  /* Activity tab container */
-  activityContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  activityScroll: {
-    flex: 1,
-  },
-  activityScrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 80,
-  },
-  activityCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderColor,
-  },
-  activitySystemText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  activityStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  activityStatusChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  activityStatusChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  activityTimestampSmall: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 4,
-  },
-
-  /* Comment item */
-  activityCommentBlock: {
-    marginBottom: 14,
-  },
-  activityCommentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  activityAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  activityAvatarInitial: {
-    color: COLORS.primary,
-    fontWeight: "700",
-  },
-  activityCommentTitleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  activityAuthor: {
-    color: COLORS.textSecondary,
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  activityTimestamp: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-  },
-  activityCommentText: {
-    marginLeft: 40,
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    marginTop: 4,
-  },
-
-  /* Comment bar at bottom */
-  commentBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: COLORS.borderColor,
-    backgroundColor: COLORS.card,
-  },
-  commentPlusWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  commentInput: {
-    flex: 1,
-    minHeight: 36,
-    maxHeight: 80,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: COLORS.input,
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    marginRight: 8,
-  },
-
-  /* Modal styles */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  modalContainer: {
-    backgroundColor: COLORS.card,
-    paddingTop: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  modalTitle: {
-    flex: 1,
-    textAlign: "center",
-    color: COLORS.textSecondary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  modalDoneText: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: COLORS.borderColor,
-    alignSelf: "center",
-    marginBottom: 8,
-  },
-  modalScroll: {
-    marginTop: 8,
-  },
-  modalSectionHeading: {
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  modalDividerThin: {
-    height: 1,
-    backgroundColor: COLORS.borderColor,
-    marginVertical: 8,
-  },
-
-  /* Status rows inside modal */
-  statusRowItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-  },
-  statusRowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  statusCircleIdle: {
-    borderColor: COLORS.textMuted,
-  },
-  statusCircleActive: {
-    borderColor: COLORS.primary,
-  },
-  statusCircleTodo: {
-    borderStyle: "dashed",
-    borderColor: COLORS.textMuted,
-  },
-  statusCircleInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.primary,
-  },
-  statusCircleComplete: {
-    borderWidth: 0,
-    backgroundColor: COLORS.success,
-  },
-  statusRowLabel: {
-    color: COLORS.textPrimary,
-    fontSize: 14,
-  },
-  statusRowLabelSelected: {
-    color: COLORS.textSecondary,
-    fontWeight: "700",
-  },
-
-  /* Task type rows */
-  taskTypeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderColor,
-  },
-  taskTypeLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  taskTypeLabel: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  taskTypeComingSoonText: {
-    marginTop: 2,
-    fontSize: 11,
-    color: COLORS.textMuted,
-  },
-
-  /* Inline Add Property menu box */
-  propertyInlineCard: {
-    marginTop: 4,
-    backgroundColor: COLORS.surfaceAlt,
-    borderRadius: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  propertyItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.borderColor,
-  },
-  propertyItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  propertyItemLabel: {
-    marginLeft: 8,
-    color: COLORS.textSecondary,
-    fontSize: 13,
-  },
-  propertyAddSubtaskRow: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  propertyAddSubtaskText: {
-    color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});

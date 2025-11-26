@@ -140,6 +140,7 @@ export const IMAGES = {
 	projectpic4: require('../assets/images/project/pic4.png'),
 	projectpic5: require('../assets/images/project/pic5.png'),
 	projectpic6: require('../assets/images/project/pic6.png'),
+	projectpic7: require('../assets/images/project/pic7.jpg'),
 
 	bgonboarding: require('../assets/images/onboarding/background.png'),
 	onboardingpic1: require('../assets/images/onboarding/pic1.png'),
