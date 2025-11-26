@@ -1,143 +1,222 @@
 // components/RecentTasks.tsx
-import React, { useMemo } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { useTheme } from "@react-navigation/native";
 import Ionicons from "react-native-vector-icons/Ionicons";
+
+/* ---------- Types ---------- */
+
+export type StatusKey =
+  | "pending"
+  | "idle"
+  | "work stopped"
+  | "completed"
+  | "in progress";
+
 
 export type RecentTask = {
   id: string;
   title: string;
   updatedAt: string;
+  status?: StatusKey;  
+  companyPayload: any;
 };
 
+
 type Props = {
-  tasks: RecentTask[];              
-  maxItems?: number;                
+  tasks: RecentTask[];
+  maxItems?: number;
   onPressTask?: (task: RecentTask) => void;
 };
 
 const RecentTasks: React.FC<Props> = ({ tasks, maxItems = 6, onPressTask }) => {
   const { colors, dark } = useTheme();
+  const [expanded, setExpanded] = useState(true);
 
   const sorted = useMemo(
     () =>
       [...(tasks || [])].sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       ),
     [tasks]
   );
 
   const visible = sorted.slice(0, maxItems);
+  const hasTasks = visible.length > 0;
+
+  const getStatusIcon = (status?: StatusKey) => {
+    // icon + color based on status
+    switch (status) {
+      case "completed":
+        return {
+          name: "checkmark-done-outline", // ✅ double tick
+          color: "#22c55e", // green
+        };
+      case "idle":
+        return {
+          name: "ellipse-outline", // ◯ round
+          color: dark ? "rgba(255,255,255,0.7)" : "rgba(148,163,184,1)",
+        };
+      case "work stopped":
+        return {
+          name: "alert-circle-outline", // ⚠ disturbance
+          color: "#f97316", // orange
+        };
+      case "in progress":
+        return {
+          name: "sync-outline", // ⟳ in progress
+          color: colors.primary ?? "#a855f7",
+        };
+      case "pending":
+        return {
+          name: "time-outline", // ⏱ pending
+          color: dark ? "rgba(255,255,255,0.8)" : "rgba(148,163,184,1)",
+        };
+      default:
+        return {
+          name: "checkmark-done-outline",
+          color: colors.primary ?? "#a855f7",
+        };
+    }
+  };
 
   return (
-    <View style={{ paddingHorizontal: 16 }}>
-      <Text style={[styles.header, { color: colors.text }]}>Recents</Text>
+    <View style={styles.sectionContainer}>
+      {/* Header row: "Recents" with chevron */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={styles.headerRow}
+        onPress={() => setExpanded((prev) => !prev)}
+      >
+        <Text style={[styles.headerText, { color: colors.text }]}>Recents Tasks</Text>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={18}
+          color={dark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"}
+        />
+      </TouchableOpacity>
 
-      <FlatList
-        data={visible}
-        keyExtractor={(item) => item.id}
-        scrollEnabled={false}
-        ItemSeparatorComponent={() => (
-          <View
-            style={{
-              height: StyleSheet.hairlineWidth,
-              backgroundColor: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-            }}
-          />
-        )}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => onPressTask?.(item)}
-            style={[
-              styles.row,
-              {
-                backgroundColor: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
-                borderColor: dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)",
-              },
-            ]}
-          >
-            <View
+      {/* Collapsible content */}
+      {expanded && (
+        <>
+          {!hasTasks ? (
+            <Text
               style={[
-                styles.leading,
+                styles.emptyText,
                 {
-                  backgroundColor: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-                  borderColor: dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.06)",
+                  color: dark
+                    ? "rgba(255,255,255,0.6)"
+                    : "rgba(0,0,0,0.55)",
                 },
               ]}
             >
-              <Ionicons name="checkbox-outline" size={18} color={colors.primary ?? "#8B5CF6"} />
-            </View>
+              No recent tasks yet.
+            </Text>
+          ) : (
+            <FlatList
+              data={visible}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              renderItem={({ item }) => {
+                const { name, color } = getStatusIcon(item.status);
 
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={1} style={[styles.title, { color: colors.text }]}>
-                {item.title || "Untitled"}
-              </Text>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.sub,
-                  { color: dark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.6)" },
-                ]}
-              >
-                {formatRelative(item.updatedAt)}
-              </Text>
-            </View>
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => onPressTask?.(item)}
+                    style={styles.row}
+                  >
+                    {/* Left icon driven by status */}
+                    <View style={styles.iconWrap}>
+                      <Ionicons name={name} size={18} color={color} />
+                    </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={dark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)"}
+                    {/* Title only, like Linear UI */}
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.title,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {item.title || "Untitled"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+              ItemSeparatorComponent={() => (
+                <View
+                  style={[
+                    styles.separator,
+                    {
+                      backgroundColor: dark
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.1)",
+                    },
+                  ]}
+                />
+              )}
             />
-          </TouchableOpacity>
-        )}
-      />
+          )}
+        </>
+      )}
     </View>
   );
 };
 
 export default RecentTasks;
 
-function formatRelative(dateLike: string) {
-  const d = new Date(dateLike);
-  if (isNaN(d.getTime())) return "";
-  const diff = Date.now() - d.getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const days = Math.floor(h / 24);
-  if (days < 7) return `${days}d ago`;
-  return d.toDateString().split(" ").slice(1).join(" ");
-}
+/* ---------- Styles ---------- */
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 18,
+  sectionContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  headerText: {
+    fontSize: 14,
     fontWeight: "700",
-    marginBottom: 8,
     letterSpacing: 0.2,
   },
+
+  emptyText: {
+    fontSize: 12,
+    marginTop: 6,
+  },
+
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginVertical: 6,
-    borderWidth: 1,
+    paddingVertical: 8,
   },
-  leading: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
+  iconWrap: {
+    width: 28,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
-    borderWidth: 1,
+    marginRight: 10,
   },
-  title: { fontSize: 15, fontWeight: "600" },
-  sub: { marginTop: 2, fontSize: 12, fontWeight: "500" },
+  title: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  separator: {
+    height: 1,
+    marginLeft: 38, // align under text, not under icon
+  },
 });

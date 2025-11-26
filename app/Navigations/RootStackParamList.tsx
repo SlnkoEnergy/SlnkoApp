@@ -16,6 +16,7 @@ export type RootStackParamList = {
     CompanyDetails: undefined;
     Estimates: undefined;
     Project: undefined;
+    Company:{ data?: any };
     Contacts: undefined;
     NewContact: undefined;
     Estimatesdetails:  { data?: any };

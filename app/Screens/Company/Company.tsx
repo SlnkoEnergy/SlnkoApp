@@ -127,8 +127,8 @@ const TaskTypeRow: React.FC<TaskTypeRowProps> = ({
             disabled
               ? COLORS.textMuted
               : selected
-                ? COLORS.primary
-                : COLORS.textSecondary
+              ? COLORS.primary
+              : COLORS.textSecondary
           }
           style={{ marginRight: 10 }}
         />
@@ -261,9 +261,9 @@ function normalizeStatusFromBackend(raw?: string | null): StatusKey {
 type CompanyScreenProps = StackScreenProps<RootStackParamList, "Company">;
 
 const Company = ({ route }: CompanyScreenProps) => {
-  const { data } = route.params; // data = card object with _raw inside
+  const { data } = route.params;
 
-  console.log(data)
+  console.log(data);
 
   // Title: prefer card title, then activity name, else fallback
   const activityName =
@@ -289,8 +289,8 @@ const Company = ({ route }: CompanyScreenProps) => {
     typeof data?._raw?.percent_complete === "number"
       ? data._raw.percent_complete
       : typeof data?._raw?.work_completion?.value === "number"
-        ? data._raw.work_completion.value
-        : undefined;
+      ? data._raw.work_completion.value
+      : undefined;
 
   // ---- Calculate Total / Completed / Pending / Today from backend ----
   let completedQty = 0;
@@ -340,8 +340,8 @@ const Company = ({ route }: CompanyScreenProps) => {
       typeof data?._raw?.percent_complete === "number"
         ? data._raw.percent_complete
         : typeof data?._raw?.work_completion?.value === "number"
-          ? data._raw.work_completion.value
-          : undefined;
+        ? data._raw.work_completion.value
+        : undefined;
 
     if (typeof pct === "number") {
       if (pct >= 100) return "completed";
@@ -425,8 +425,8 @@ const Company = ({ route }: CompanyScreenProps) => {
   const [commentText, setCommentText] = useState("");
 
   const openStatusModal = () => {
-    setDraftStatus(status); // sync with current
-    setStatusNote(""); // clear old note
+    setDraftStatus(status);
+    setStatusNote("");
     setTodayQty("");
     setStatusActiveTab("status");
     setStatusModalVisible(true);
@@ -460,7 +460,6 @@ const Company = ({ route }: CompanyScreenProps) => {
       typeof pendingQty === "number" &&
       pendingQty >= 0
     ) {
-      // if user enters more than pending, cap it
       if (qtyNumber > pendingQty) {
         effectiveQty = pendingQty;
       }
@@ -532,6 +531,7 @@ const Company = ({ route }: CompanyScreenProps) => {
     }
   };
 
+  // 🔹 Live input capping: if user types > pendingQty, it auto-snaps to pending
   const handleTodayQtyChange = (value: string) => {
     // allow clearing the input
     if (value.trim() === "") {
@@ -548,14 +548,17 @@ const Company = ({ route }: CompanyScreenProps) => {
       return;
     }
 
-    // if we know pendingQty, cap it
-    if (typeof pendingQty === "number" && pendingQty >= 0 && numeric > pendingQty) {
+    // if we know pendingQty, cap it so user sees the real allowed value
+    if (
+      typeof pendingQty === "number" &&
+      pendingQty >= 0 &&
+      numeric > pendingQty
+    ) {
       setTodayQty(String(Math.max(pendingQty, 0)));
     } else {
       setTodayQty(String(numeric));
     }
   };
-
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
@@ -628,10 +631,7 @@ const Company = ({ route }: CompanyScreenProps) => {
     );
   };
 
-  const percentSafe = Math.min(
-    Math.max(percentCompleteRaw ?? 0, 0),
-    100
-  );
+  const percentSafe = Math.min(Math.max(percentCompleteRaw ?? 0, 0), 100);
 
   return (
     <View style={styles.container}>
@@ -1052,7 +1052,6 @@ const Company = ({ route }: CompanyScreenProps) => {
                   value={todayQty}
                   onChangeText={handleTodayQtyChange}
                 />
-
               </ScrollView>
             ) : (
               <ScrollView style={styles.modalScroll}>

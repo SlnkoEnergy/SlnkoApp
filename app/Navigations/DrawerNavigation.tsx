@@ -5,9 +5,7 @@ import { SafeAreaView } from 'react-native';
 import { useTheme } from '@react-navigation/native';
 import Sidebar from '../layout/Sidebar';
 
-
 const Drawer = createDrawerNavigator();
-
 
 const DrawerNavigation = () => {
   const { colors }: { colors: any } = useTheme();
@@ -15,7 +13,7 @@ const DrawerNavigation = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.card }}>
       <Drawer.Navigator
-        initialRouteName='BottomNavigation'
+        initialRouteName="BottomNavigation"
         screenOptions={{
           headerShown: false,
           drawerStyle: {
@@ -24,16 +22,19 @@ const DrawerNavigation = () => {
             borderBottomRightRadius: 20,
           },
         }}
-        drawerContent={(props) => {
-          return <Sidebar navigation={props.navigation} />;
-        }}
+        drawerContent={(props) => <Sidebar navigation={props.navigation} />}
       >
-        <Drawer.Screen name='BottomNavigation' component={BottomNavigation} />
+        <Drawer.Screen
+          name="BottomNavigation"
+          component={BottomNavigation}
+          options={{
+            drawerLabel: "Home",
+            title: "Home",
+          }}
+        />
       </Drawer.Navigator>
     </SafeAreaView>
   );
 };
-
-
 
 export default DrawerNavigation;
