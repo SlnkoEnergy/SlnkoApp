@@ -2,6 +2,8 @@ export const IMAGES = {
 
 	user: require('../assets/images/user.png'),
 	logo: require('../assets/images/my_logo.png'),
+	protrac_logo: require('../assets/images/onboarding/protrac_logo.png'),
+	slnko_blue: require('../assets/images/slnko_blue_logo.png'),
 	sun: require('../assets/images/icons/sun.png'),
 	chat: require('../assets/images/icons/chat.png'),
 	ads: require('../assets/images/icons/ads.png'),

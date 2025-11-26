@@ -6,9 +6,9 @@ import { RootStackParamList } from "./RootStackParamList";
 
 import DrawerNavigation from "./DrawerNavigation";
 import Onbording from "../Screens/onbording/Onbording";
-import SignIn from "../Screens/Auth/SignIn";
-import EnterCode from "../Screens/Auth/EnterCode";
-import NewPassword from "../Screens/Auth/NewPassword";
+// import SignIn from "../Screens/Auth/SignIn";
+// import EnterCode from "../Screens/Auth/EnterCode";
+// import NewPassword from "../Screens/Auth/NewPassword";
 import Notification from "../Screens/Notification/Notification";
 import EditProfile from "../Screens/profile/EditProfile";
 import Call from "../Screens/Chat/Call";
@@ -57,6 +57,7 @@ import RolesAccess from "../Screens/Settings/RolesAccess";
 import PayrollPeople from "../Screens/Settings/PayrollPeople";
 import SelectParty from "../Screens/Contacts/SelectParty";
 import AddTask from "../Screens/Project/AddTask";
+import MainSignIn from "../Screens/Auth/MainSignIn";
 
 
 
@@ -82,6 +83,7 @@ const StackNavigator = () => {
         <Stack.Screen name={"demo"} component={demo} />
         <Stack.Screen name={"splash"} component={Splash} />
         <Stack.Screen name={"Onbording"} component={Onbording} />
+        <Stack.Screen name={"Login"} component={MainSignIn} />
         <Stack.Screen name={"ChooseLanguage"} component={ChooseLanguage} />
         {/* <Stack.Screen name={"SignIn"} component={SignIn} /> */}
         {/* <Stack.Screen name={"EnterCode"} component={EnterCode} /> */}
