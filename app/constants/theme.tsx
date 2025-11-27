@@ -23,6 +23,8 @@ export const COLORS = {
 	label: "#8A8A8A",
 	backgroundColor: "#fff",
 	black: "#000",
+	primarySoft: "#e3edf7",
+
 
 	//light theme
 	card: "#FFFFFF",

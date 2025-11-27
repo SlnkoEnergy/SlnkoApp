@@ -1,27 +1,25 @@
-import React, { useState } from "react";
+// app/Navigations/Route.tsx
+import React, { useState, useMemo } from "react";
 import {
   NavigationContainer,
   DefaultTheme as NavigationDefaultTheme,
-  DarkTheme as NavigationDarkTheme
-} from '@react-navigation/native';
-import { SafeAreaProvider } from "react-native-safe-area-context";
+  DarkTheme as NavigationDarkTheme,
+} from "@react-navigation/native";
+
 import StackNavigator from "./StackNavigator";
 import themeContext from "../constants/themeContext";
 import { COLORS } from "../constants/theme";
 
-
 const Routes = () => {
-
   const [isDarkTheme, setIsDarkTheme] = useState(false);
-  
-  const authContext = React.useMemo(() => ({
-    setDarkTheme: () => {
-      setIsDarkTheme(true);
-    },
-    setLightTheme: () => {
-      setIsDarkTheme(false);
-    }
-  }), []);
+
+  const authContext = useMemo(
+    () => ({
+      setDarkTheme: () => setIsDarkTheme(true),
+      setLightTheme: () => setIsDarkTheme(false),
+    }),
+    []
+  );
 
   const CustomDefaultTheme = {
     ...NavigationDefaultTheme,
@@ -35,8 +33,8 @@ const Routes = () => {
       input: COLORS.input,
       border: COLORS.borderColor,
       checkBoxborder: COLORS.checkBoxborderColor,
-    }
-  }
+    },
+  };
 
   const CustomDarkTheme = {
     ...NavigationDarkTheme,
@@ -50,20 +48,18 @@ const Routes = () => {
       input: COLORS.darkInput,
       border: COLORS.darkBorder,
       checkBoxborder: COLORS.darkcheckBoxborderColor,
-    }
-  }
+    },
+  };
 
   const theme = isDarkTheme ? CustomDarkTheme : CustomDefaultTheme;
 
   return (
-    <SafeAreaProvider>
-      <themeContext.Provider value={authContext}>
-        <NavigationContainer theme={theme}>
-          <StackNavigator />
-        </NavigationContainer>
-      </themeContext.Provider>
-    </SafeAreaProvider>
+    <themeContext.Provider value={authContext}>
+      <NavigationContainer theme={theme}>
+        <StackNavigator />
+      </NavigationContainer>
+    </themeContext.Provider>
   );
-
 };
+
 export default Routes;
