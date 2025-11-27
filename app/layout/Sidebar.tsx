@@ -24,7 +24,7 @@ const Sidebar = ({ navigation }: any) => {
   const { colors }: { colors: any } = useTheme();
   const refRBSheet = useRef<any>(null);
 
-  // cached -> fresh user
+
   const cached = useAuthUser();
   const { data: itUsers } = useGetAllUsersItQuery();
 
@@ -46,7 +46,12 @@ const Sidebar = ({ navigation }: any) => {
 
   const initial = (displayName || 'U').trim().charAt(0).toUpperCase();
 
-  // refresh cache if fresh user arrived
+  const attachmentUrl: string | undefined =
+    (me?.attachment_url && String(me.attachment_url).trim()) ||
+    (cached as any)?.attachment_url ||
+    undefined;
+
+
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
@@ -204,7 +209,7 @@ const Sidebar = ({ navigation }: any) => {
             alignItems: 'center',
           }}
         >
-          {/* Avatar with online dot */}
+                   {/* Avatar with online dot (uses attachment_url if available) */}
           <View style={{ position: 'relative', marginBottom: 10 }}>
             <View
               style={{
@@ -214,10 +219,28 @@ const Sidebar = ({ navigation }: any) => {
                 backgroundColor: primary,
                 alignItems: 'center',
                 justifyContent: 'center',
+                overflow: 'hidden',
               }}
             >
-              <Text style={{ ...FONTS.fontMedium, fontSize: 40, color: colors.card }}>{initial}</Text>
+              {attachmentUrl ? (
+                <Image
+                  source={{ uri: attachmentUrl }}
+                  style={{ height: 84, width: 84, borderRadius: 42 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text
+                  style={{
+                    ...FONTS.fontMedium,
+                    fontSize: 40,
+                    color: colors.card,
+                  }}
+                >
+                  {initial}
+                </Text>
+              )}
             </View>
+
             <View
               style={{
                 height: 14,
@@ -232,6 +255,7 @@ const Sidebar = ({ navigation }: any) => {
               }}
             />
           </View>
+
 
           {/* Name */}
           <Text style={{ ...FONTS.fontMedium, fontSize: 22, color: colors.title }}>{displayName}</Text>
