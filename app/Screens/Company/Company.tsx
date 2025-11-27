@@ -627,7 +627,10 @@ const Company = ({ route }: CompanyScreenProps) => {
     );
   };
 
-  const percentSafe = Math.min(Math.max(percentCompleteRaw ?? 0, 0), 100);
+  const percentSafe = Number(
+  Math.min(Math.max(percentCompleteRaw ?? 0, 0), 100).toFixed(1)
+);
+
 
   return (
     <View style={styles.container}>
