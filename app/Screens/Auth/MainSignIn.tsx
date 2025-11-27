@@ -116,10 +116,21 @@ const handleLogin = async () => {
 
     setPassword("");
 
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "DrawerNavigation" as any }],
-    });
+   navigation.reset({
+  index: 0,
+  routes: [
+    {
+      name: "DrawerNavigation" as never,
+      params: {
+        screen: "BottomNavigation",
+        params: {
+          screen: "Project",
+        },
+      } as never,
+    },
+  ],
+});
+
   } catch (err: any) {
     const is401 = err?.status === 401 || err?.originalStatus === 401;
 
@@ -268,7 +279,6 @@ const handleLogin = async () => {
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
-
     
   );
 };
