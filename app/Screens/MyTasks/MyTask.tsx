@@ -24,7 +24,7 @@ const MyTask = () => {
   return (
     <View style={styles.container}>
       {/* ✅ Simple Header call */}
-      <Header title="My Tasks" rightIcon2="search"   />
+      <Header title="My Tasks" rightIcon2="search" />
 
       {/* Stats cards */}
       <View style={styles.grid}>
