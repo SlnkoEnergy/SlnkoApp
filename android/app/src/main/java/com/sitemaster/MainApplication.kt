@@ -1,4 +1,4 @@
-package com.slnko.protrac;
+package com.protrac;
 
 import android.app.Application
 import com.facebook.react.PackageList

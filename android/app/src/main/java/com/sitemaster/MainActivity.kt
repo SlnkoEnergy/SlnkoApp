@@ -1,4 +1,4 @@
-package com.slnko.protrac;
+package com.protrac;
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
