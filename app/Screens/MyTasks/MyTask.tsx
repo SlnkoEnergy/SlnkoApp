@@ -1,69 +1,134 @@
 // Screens/MyTasks/MyTask.tsx
 import React from "react";
-import { View, StyleSheet, Text } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+} from "react-native";
 import Card from "../../components/Cards/Card";
 import Icon from "react-native-vector-icons/Feather";
 import { COLORS } from "../../constants/theme";
-import Header from "../../layout/Header";
+import TaskHeader from "../../layout/TaskHeader";
+import { useGetAllDprStatusQuery } from "../../store/slices/dprSlice";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../../Navigations/RootStackParamList";
 
-const items = [
-  { id: "today", title: "Today", count: 0, iconName: "calendar", iconBg: "#6C5CE7" },
-  { id: "overdue", title: "Overdue", count: 0, iconName: "bell", iconBg: "#FF4B5C" },
-  { id: "priorities", title: "My Priorities", count: 0, iconName: "flag", iconBg: "#FF8A3C" },
-  { id: "upcoming", title: "Upcoming", count: 1, iconName: "clock", iconBg: "#F6C744" },
-  { id: "myTasks", title: "My Tasks", count: 1, iconName: "check-circle", iconBg: "#2F9BFF" },
-  { id: "reminders", title: "Reminders", count: 0, iconName: "bell", iconBg: "#00B894" },
-  { id: "comments", title: "Comments", count: 0, iconName: "message-square", iconBg: "#24A36B" },
-];
-
-const myLists = [
-  { id: "personal", name: "Personal list", count: 1, initials: "SS", isPrivate: true },
-];
+type MyTaskNavigationProp = StackNavigationProp<RootStackParamList, "BottomNavigation">;
 
 const MyTask = () => {
+  const { data, isLoading, isError } = useGetAllDprStatusQuery();
+  const navigation = useNavigation<MyTaskNavigationProp>();
+
+  // Safely read stats from API response
+  const stats = data?.data || {
+    today: 0,
+    overdue: 0,
+    upcoming: 0,
+    completed: 0,
+  };
+
+  const totalTasks =
+    (stats.today || 0) +
+    (stats.overdue || 0) +
+    (stats.upcoming || 0) +
+    (stats.completed || 0);
+
+  // Items built from live API data (no dummy counts)
+  const items = [
+    {
+      id: "today",
+      title: "Today",
+      count: stats.today ?? 0,
+      iconName: "calendar",
+      iconBg: "#6C5CE7",
+    },
+    {
+      id: "overdue",
+      title: "Overdue",
+      count: stats.overdue ?? 0,
+      iconName: "bell",
+      iconBg: "#FF4B5C",
+    },
+    {
+      id: "upcoming",
+      title: "Upcoming",
+      count: stats.upcoming ?? 0,
+      iconName: "clock",
+      iconBg: "#F6C744",
+    },
+    {
+      id: "completed",
+      title: "Completed",
+      count: stats.completed ?? 0,
+      iconName: "check-circle",
+      iconBg: "#24A36B",
+    },
+    {
+      id: "myTasks",
+      title: "My Tasks",
+      count: totalTasks,
+      iconName: "check-square",
+      iconBg: "#2F9BFF",
+    },
+  ] as const;
+
+  const handleCardPress = (item: (typeof items)[number]) => {
+    navigation.navigate("CardsData", {
+      bucket: item.id,
+      title: item.title,
+    });
+  };
+
   return (
     <View style={styles.container}>
-      {/* ✅ Simple Header call */}
-      <Header title="My Tasks" rightIcon2="search"   />
+      <TaskHeader title="My Task" />
 
-      {/* Stats cards */}
-      <View style={styles.grid}>
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            title={item.title}
-            count={item.count}
-            icon={<Icon name={item.iconName} size={18} color="#fff" />}
-            iconBgColor={item.iconBg}
-            style={styles.cardSpacing}
-          />
-        ))}
-      </View>
-
-      {/* Divider */}
-      <View style={styles.listDivider} />
-
-      {/* My Lists */}
-      <View style={styles.listHeaderRow}>
-        <Text style={styles.listHeaderText}>My Lists</Text>
-        <Icon name="plus" size={18} color={COLORS.primary} />
-      </View>
-
-      {myLists.map((list) => (
-        <View key={list.id} style={styles.listRow}>
-          <View style={styles.listLeft}>
-            <View style={styles.listAvatar}>
-              <Text style={styles.listAvatarInitials}>{list.initials}</Text>
-            </View>
-            <Text style={styles.listName}>{list.name}</Text>
-            {list.isPrivate && (
-              <Icon name="lock" size={12} color={COLORS.textMuted} style={{ marginLeft: 4 }} />
-            )}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Loading / Error States for DPR status */}
+        {isLoading && (
+          <View style={styles.stateContainer}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.stateText}>Loading your tasks…</Text>
           </View>
+        )}
 
-          <Text style={styles.listCount}>{list.count}</Text>
-        </View>
-      ))}
+        {isError && !isLoading && (
+          <View style={styles.stateContainer}>
+            <Text style={styles.stateText}>Unable to load DPR status.</Text>
+          </View>
+        )}
+
+        {/* Stats cards */}
+        {!isLoading && !isError && (
+          <View style={styles.grid}>
+            {items.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.cardSpacing}
+                activeOpacity={0.85}
+                onPress={() => handleCardPress(item)}
+              >
+                <Card
+                  title={item.title}
+                  count={item.count}
+                  icon={<Icon name={item.iconName} size={18} color="#fff" />}
+                  iconBgColor={item.iconBg}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Divider (optional) */}
+        <View style={styles.listDivider} />
+      </ScrollView>
     </View>
   );
 };
@@ -73,13 +138,18 @@ export default MyTask;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    paddingBottom: 100, // keep above floating footer
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    padding: 16,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
   },
   cardSpacing: {
     width: "48%",
@@ -91,50 +161,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
   },
-  listHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+  stateContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  listHeaderText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.textMuted,
-  },
-  listRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-  },
-  listLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  listAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  listAvatarInitials: {
-    color: COLORS.primary,
-    fontWeight: "700",
-    fontSize: 12,
-  },
-  listName: {
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    fontWeight: "500",
-  },
-  listCount: {
+  stateText: {
+    marginTop: 6,
     fontSize: 13,
     color: COLORS.textSecondary,
-    fontWeight: "500",
   },
 });

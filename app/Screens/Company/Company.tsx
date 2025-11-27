@@ -127,8 +127,8 @@ const TaskTypeRow: React.FC<TaskTypeRowProps> = ({
             disabled
               ? COLORS.textMuted
               : selected
-              ? COLORS.primary
-              : COLORS.textSecondary
+                ? COLORS.primary
+                : COLORS.textSecondary
           }
           style={{ marginRight: 10 }}
         />
@@ -289,8 +289,8 @@ const Company = ({ route }: CompanyScreenProps) => {
     typeof data?._raw?.percent_complete === "number"
       ? data._raw.percent_complete
       : typeof data?._raw?.work_completion?.value === "number"
-      ? data._raw.work_completion.value
-      : undefined;
+        ? data._raw.work_completion.value
+        : undefined;
 
   // ---- Calculate Total / Completed / Pending / Today from backend ----
   let completedQty = 0;
@@ -318,13 +318,13 @@ const Company = ({ route }: CompanyScreenProps) => {
   const mapUiStatusToApiStatus = (value: StatusKey): string => {
     switch (value) {
       case "in progress":
-        return "in-progress";
+        return "in progress";
       case "idle":
         return "ideal"; // backend typo
       case "work stopped":
-        return "work-stopped";
+        return "work stopped";
       default:
-        return "in-progress";
+        return "in progress";
     }
   };
 
@@ -340,8 +340,8 @@ const Company = ({ route }: CompanyScreenProps) => {
       typeof data?._raw?.percent_complete === "number"
         ? data._raw.percent_complete
         : typeof data?._raw?.work_completion?.value === "number"
-        ? data._raw.work_completion.value
-        : undefined;
+          ? data._raw.work_completion.value
+          : undefined;
 
     if (typeof pct === "number") {
       if (pct >= 100) return "completed";
@@ -512,16 +512,12 @@ const Company = ({ route }: CompanyScreenProps) => {
       nextStatus === "in progress" && effectiveQty !== null ? effectiveQty : 0;
 
     const payload = {
-      projectId: data._raw?.project_id?._id,
-      activityId: data?._raw?.activity_id,
+      id: data._raw._id,
       todays_progress: apiTodayProgress, // 0 for idle / work stopped
       date: new Date().toISOString(),
       remarks: trimmedNote,
       status: apiStatus, // "in-progress" | "ideal" | "work-stopped"
     };
-
-    console.log(payload.projectId);
-    console.log(payload.activityId);
 
     try {
       const res = await updateDprLog(payload).unwrap();
