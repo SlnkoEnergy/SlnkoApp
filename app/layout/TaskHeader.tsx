@@ -1,265 +1,324 @@
-// CustomHeader.tsx
+// TaskHeader.tsx
 import React, { useState } from "react";
-import { Text, View } from "react-native";
+import {
+    Text,
+    TouchableOpacity,
+    View,
+    TextInput,
+    StyleSheet,
+    Dimensions,
+    ScrollView,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ProfilePlaceholder from "../components/profilePlaceholder";
 import Icon from "react-native-vector-icons/MaterialIcons";
-// import { useAuthUser } from "../../hooks/Auth";
-import { TextInput } from "react-native-gesture-handler";
-import { StyleSheet, Dimensions } from "react-native";
-const { width } = Dimensions.get("window");
-import COLORS from "../constants/theme"
+import COLORS from "../constants/theme";
 import { useAuthUser } from "../utils/userHooks/getUser";
+import { BellIcon } from "lucide-react-native";
 
+const { width } = Dimensions.get("window");
+
+type StatusOption = {
+    key: string;
+    label: string;
+};
 
 interface TaskHeaderProps {
     onMenuPress?: () => void;
     onHomePress?: () => void;
     title?: string;
+    statusFilterOptions?: StatusOption[];
+    onStatusFilterChange?: (key: string) => void;
+    isBack?: boolean;
 }
 
-const TaskHeader: React.FC<TaskHeaderProps> = ({title}) => {
+const DEFAULT_STATUS_OPTIONS: StatusOption[] = [
+    { key: "all", label: "All" },
+    { key: "today", label: "Today" },
+    { key: "overdue", label: "Overdue" },
+    { key: "upcoming", label: "Upcoming" },
+    { key: "completed", label: "Completed" },
+];
+
+const TaskHeader: React.FC<TaskHeaderProps> = ({
+    title = "My Task",
+    statusFilterOptions,
+    onStatusFilterChange,
+    isBack = false,
+}) => {
     const user = useAuthUser();
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
+
+    const navigation = useNavigation<any>();
 
     const displayName =
         (user?.name && String(user.name).trim()) ||
-        (user?.emp_id && String(user.emp_id).trim());
+        (user?.emp_id && String(user.emp_id).trim()) ||
+        "User";
+
+    const options =
+        Array.isArray(statusFilterOptions) && statusFilterOptions.length > 0
+            ? statusFilterOptions
+            : DEFAULT_STATUS_OPTIONS;
+
+    const handleStatusPress = (key: string) => {
+        setStatusFilter(key);
+        onStatusFilterChange?.(key);
+    };
 
     return (
-        <View style={styles.header}>
-            <View style={styles.headerMain}>
-                <View style={styles.leftContainer}>
-                    <ProfilePlaceholder size={40} name="" />
-                    <Text style={styles.headerTitle}>{title}</Text>
+        <View style={styles.headerWrapper}>
+            {/* TOP HEADER (flat, not card) */}
+            <View style={styles.header}>
+                <View style={styles.headerMain}>
+                    <View style={styles.leftContainer}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (isBack) {
+                                    navigation.goBack();
+                                } else {
+                                    navigation.openDrawer();
+                                }
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            {isBack ? (
+                                <Icon
+                                    name="chevron-left"
+                                    size={30}
+                                    color={COLORS.COLORS.textPrimary}
+                                />
+                            ) : (
+                                <ProfilePlaceholder size={40} name={displayName} />
+                            )}
+                        </TouchableOpacity>
+
+                        <View>
+                            <Text style={styles.headerTitle}>{title}</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate("Notification")}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.bellBadgeWrapper}>
+                                <BellIcon
+                                    size={20}
+                                    color={COLORS.COLORS.primary}
+                                    strokeWidth={1.8}
+                                />
+                                <View style={styles.badgeDot} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                <View>
-                    <ProfilePlaceholder size={40} name={displayName} />
-                </View>
+                {/* SEARCH + FILTER */}
+                {!isBack && (
+                    <View style={styles.SubHeader}>
+                        <View style={styles.searchBar}>
+                            <Icon
+                                name="search"
+                                size={18}
+                                color={COLORS.COLORS.textMuted}
+                                style={styles.searchIconLeft}
+                            />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search tasks, projects…"
+                                placeholderTextColor={COLORS.COLORS.textMuted}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                returnKeyType="search"
+                                accessibilityLabel="Search"
+                            />
+                        </View>
+
+                        <TouchableOpacity activeOpacity={0.85} style={styles.filterBox}>
+                            <Icon name="tune" size={22} color={COLORS.COLORS.primary} />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
 
-            <View style={styles.SubHeader}>
-                <View style={styles.searchBar}>
-                    <Icon
-                        name="search"
-                        size={20}
-                        color="#6e6e6e"
-                        style={styles.searchIconLeft}
-                    />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search..."
-                        placeholderTextColor="#8a8a8a"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        returnKeyType="search"
-                        accessibilityLabel="Search"
-                    />
-                </View>
-                <View style={styles.filterBox}>
-                    <Icon name="tune" size={24} color="#6e6e6e" />
-                </View>
+            {/* STATUS FILTER CHIPS */}
+            <View style={styles.filtersContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterRow}
+                >
+                    {options.map((opt) => {
+                        const selected = statusFilter === opt.key;
+                        return (
+                            <TouchableOpacity
+                                key={opt.key}
+                                style={[
+                                    styles.filterChip,
+                                    selected && styles.filterChipSelected,
+                                ]}
+                                onPress={() => handleStatusPress(opt.key)}
+                                activeOpacity={0.85}
+                            >
+                                <Text
+                                    style={[
+                                        styles.filterChipText,
+                                        selected && styles.filterChipTextSelected,
+                                    ]}
+                                >
+                                    {opt.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
             </View>
-        </View>
+        </View >
     );
 };
 
 export default TaskHeader;
 
-
-
-export const styles = StyleSheet.create({
-
-    blueSection: {
-        backgroundColor: COLORS.COLORS.primary,
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 32,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-    },
-
-    appIconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: COLORS.COLORS.primarySoft,
-        justifyContent: "center",
-        alignItems: "center",
-        marginRight: 10,
-    },
-
-    appIcon: {
-        width: 24,
-        height: 24,
-        tintColor: COLORS.COLORS.textOnPrimary,
-    },
-
-    appTitleRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 20,
-    },
-
-    appTitle: {
-        fontSize: 20,
-        fontWeight: "700",
-        color: COLORS.COLORS.textOnPrimary,
+const styles = StyleSheet.create({
+    headerWrapper: {
+        backgroundColor: COLORS.COLORS.background,
     },
 
     header: {
-        backgroundColor: COLORS.COLORS.surfaceAlt,
-        paddingTop: 25,
-        paddingBottom: 15,
-        paddingHorizontal: 7,
-        flexDirection: "column",
-        alignItems: "center",
-        // borderBottomLeftRadius: 15,
-        // borderBottomRightRadius: 15,
-        // height: "25%"
-        // borderBottomLeftRadius: 12,
-        // borderBottomRightRadius: 12,
+        backgroundColor: COLORS.COLORS.white,
+        paddingBottom: 16,
+        paddingHorizontal: 16,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
     },
-
-    SubHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderRadius: 10,
-        gap: 20
-    },
-
-    searchPlaceholder: {
-        flex: 1,
-        color: COLORS.COLORS.textMuted,
-        fontSize: 14,
-    },
-
-    searchIcon: {
-        fontSize: 18,
-        color: COLORS.COLORS.primaryLight,
-    },
-
-    filterBox: {
-        backgroundColor: "#fff",
-        padding: 10,
-        borderRadius: 15,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-
 
     headerMain: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         width: "100%",
-        paddingBottom: 20,
+        paddingBottom: 16,
     },
 
     leftContainer: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 10, // spacing between avatar and name
+        gap: 10,
+        flex: 1,
     },
 
     headerTitle: {
-        color: "black",
-        fontSize: 18,
-        fontWeight: "bold",
+        color: COLORS.COLORS.primary,
+        fontSize: 20,
+        fontWeight: "700",
     },
+
+    headerSubtitle: {
+        marginTop: 2,
+        fontSize: 12,
+        color: COLORS.COLORS.textSecondary,
+    },
+
     headerRight: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
     },
-    profileCircle: {
-        backgroundColor: "#fff",
-        borderRadius: 20,
-        width: 30,
-        height: 30,
+
+    bellBadgeWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: "rgba(15, 23, 42, 0.10)",
+        backgroundColor: "rgba(15, 23, 42, 0.02)",
         justifyContent: "center",
         alignItems: "center",
-        marginRight: 10,
     },
-    profileInitial: {
-        color: "#003366",
-        fontWeight: "bold",
+
+    badgeDot: {
+        position: "absolute",
+        top: 6,
+        right: 6,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#F97316",
     },
-    logoContainer: {
+
+    SubHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
         alignItems: "center",
-        marginVertical: 20,
+        gap: 12,
     },
-    logo: {
-        width: 120,
-        height: 50,
-    },
-    subtitle: {
-        marginTop: 6,
-        fontSize: 14,
-        color: "#333",
-        fontWeight: "600",
-    },
-    grid: {
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-    },
-    card: {
-        width: (width - 60) / 2,
-        aspectRatio: 1,
-        backgroundColor: "#f0f4f7",
-        borderRadius: 12,
-        padding: 10,
-        marginBottom: 20,
-        justifyContent: "center",
-        alignItems: "center",
-        elevation: 2,
-    },
-    cardText: {
-        marginTop: 10,
-        fontSize: 14,
-        color: "#003366",
-        textAlign: "center",
-        fontWeight: "500",
-    },
-    footer: {
-        alignItems: "center",
-        marginTop: "auto",
-        paddingBottom: 10,
-    },
-    footerText: {
-        fontSize: 12,
-        color: "#888",
-    },
-    footerLogo: {
-        width: 80,
-        height: 30,
-        marginTop: 4,
-    },
+
     searchBar: {
         flexDirection: "row",
         alignItems: "center",
         backgroundColor: "#FFFFFF",
-        borderRadius: 15,
+        borderRadius: 16,
         paddingHorizontal: 12,
         height: 42,
         flex: 1,
-        // optional subtle border/shadow:
         borderWidth: 1,
-        borderColor: "#E6E6E6",
+        borderColor: "rgba(15, 23, 42, 0.08)",
     },
 
     searchIconLeft: {
-        marginRight: 8,
+        marginRight: 6,
     },
 
     searchInput: {
         flex: 1,
         fontSize: 14,
-        color: "#1A1A1A",
-        paddingVertical: 0, // keeps height tight on Android/iOS
+        color: COLORS.COLORS.textPrimary,
+        paddingVertical: 0,
     },
 
-});
+    filterBox: {
+        backgroundColor: "#FFFFFF",
+        padding: 10,
+        borderRadius: 16,
+        justifyContent: "center",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "rgba(15, 23, 42, 0.08)",
+    },
 
+    filtersContainer: {
+        marginTop: 6,
+        paddingHorizontal: 16,
+    },
+
+    filterRow: {
+        paddingVertical: 10,
+    },
+
+    filterChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "transparent",
+        marginRight: 8,
+        backgroundColor: "#F3F4F6",
+    },
+
+    filterChipSelected: {
+        backgroundColor: COLORS.COLORS.primaryLight || "#D1E3FF",
+        borderColor: COLORS.COLORS.primary,
+    },
+
+    filterChipText: {
+        fontSize: 12,
+        color: COLORS.COLORS.textSecondary,
+    },
+
+    filterChipTextSelected: {
+        color: COLORS.COLORS.primary,
+        fontWeight: "600",
+    },
+});

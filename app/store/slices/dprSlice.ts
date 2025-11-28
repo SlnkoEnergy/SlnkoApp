@@ -25,6 +25,7 @@ export interface GetAllDprArgs {
   limit?: number;
   search?: string;
   projectId?: string;
+  cardStatus?: string;
 }
 
 export interface UpdateDprLogArgs {
@@ -52,12 +53,13 @@ export const dprSlice = createApi({
 
   endpoints: (builder) => ({
     getAllDpr: builder.query<GetAllDprResponse, GetAllDprArgs>({
-      query: ({ page = 1, limit = 10, search = "", projectId } = {}) => {
+      query: ({ page = 1, limit = 10, search = "", projectId, cardStatus } = {}) => {
         const params = new URLSearchParams();
         params.set("page", String(page));
         params.set("limit", String(limit));
         if (search) params.set("search", search);
         if (projectId) params.set("projectId", projectId);
+        if (cardStatus) params.set("cardStatus", cardStatus);
 
         return { url: `dpr/dpr?${params.toString()}`, method: "GET" };
       },

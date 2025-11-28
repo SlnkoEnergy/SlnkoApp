@@ -13,7 +13,8 @@ import Icon from "react-native-vector-icons/Feather";
 
 import { RootStackParamList } from "../../Navigations/RootStackParamList";
 import { COLORS } from "../../constants/theme";
-import { useGetDprTasksByBucketQuery } from "../../store/slices/dprSlice";
+import { useGetAllDprQuery } from "../../store/slices/dprSlice";
+import TaskHeader from "../../layout/TaskHeader";
 
 type Props = StackScreenProps<RootStackParamList, "CardsData">;
 
@@ -64,15 +65,43 @@ const statusFilterOptions: { key: StatusFilter; label: string }[] = [
 const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
     const { bucket, title } = route.params;
 
-    // 🔁 API call – adjust URL in slice
-    const { data, isLoading, isError } = useGetDprTasksByBucketQuery(bucket);
+    // 🔁 API call – cardStatus = bucket
+    const {
+        data: apiRes,
+        isLoading,
+        isError,
+    } = useGetAllDprQuery({
+        page: 1,
+        limit: 20,
+        cardStatus: bucket,
+    });
 
-    // Support both { data: [...] } and direct [...]
+    // ✅ Normalize incoming API => array of DprTask
+    // Works with:
+    // { ok, message, data: [ ... ] }  <-- your sample
+    // OR [ ... ] directly
     const tasks: DprTask[] = useMemo(() => {
-        if (Array.isArray(data)) return data as DprTask[];
-        if (Array.isArray((data as any)?.data)) return (data as any).data as DprTask[];
+        if (!apiRes) return [];
+
+        const anyRes: any = apiRes;
+
+        // Primary case: { data: [...] }
+        if (Array.isArray(anyRes.data)) {
+            return anyRes.data as DprTask[];
+        }
+
+        // Fallback: if API directly returns an array
+        if (Array.isArray(anyRes)) {
+            return anyRes as DprTask[];
+        }
+
+        // Another fallback: if your backend wraps in { items: [...] }
+        if (Array.isArray(anyRes.items)) {
+            return anyRes.items as DprTask[];
+        }
+
         return [];
-    }, [data]);
+    }, [apiRes]);
 
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
@@ -147,7 +176,13 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
     const renderTask = ({ item }: { item: DprTask }) => {
         const status = item.current_status?.status || "pending";
         const { bg: statusBg, text: statusText } = getStatusStyle(status);
-        const pct = item.percent_complete ?? 0;
+
+        // ✅ Prefer percent_complete; fallback to work_completion.value
+        const rawPct =
+            item.percent_complete ??
+            (item.work_completion?.value != null ? item.work_completion.value : 0);
+        const pct = Math.min(Math.max(Math.round(rawPct), 0), 100);
+
         const projectCode = item.project_id && (item.project_id as any).code;
         const activityName = item.activity_id && (item.activity_id as any).name;
 
@@ -160,6 +195,7 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
                 activeOpacity={0.85}
                 onPress={() => {
                     // later: navigate to detailed DPR screen
+                    // navigation.navigate("TaskDetails", { data: item });
                 }}
             >
                 {/* Top row: status + percent */}
@@ -213,7 +249,8 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
                     <View style={styles.dateRow}>
                         <Icon name="calendar" size={14} color={COLORS.textMuted} />
                         <Text style={styles.dateText}>
-                            {formatDate(item.planned_start)} - {formatDate(item.planned_finish)}
+                            {formatDate(item.planned_start)} -{" "}
+                            {formatDate(item.planned_finish)}
                         </Text>
                     </View>
 
@@ -243,7 +280,7 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            {/* <View style={styles.header}>
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
@@ -256,10 +293,10 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
                         {filteredCount} of {totalCount} tasks
                     </Text>
                 </View>
-            </View>
+            </View> */}
 
             {/* Filter chips */}
-            <View style={styles.filterRow}>
+            {/* <View style={styles.filterRow}>
                 {statusFilterOptions.map((opt) => {
                     const selected = statusFilter === opt.key;
                     return (
@@ -282,7 +319,9 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
                         </TouchableOpacity>
                     );
                 })}
-            </View>
+            </View> */}
+
+            <TaskHeader title={title} isBack={true} />
 
             {/* Content */}
             {isLoading && (

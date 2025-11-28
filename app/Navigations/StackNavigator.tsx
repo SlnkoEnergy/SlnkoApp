@@ -59,6 +59,7 @@ import SelectParty from "../Screens/Contacts/SelectParty";
 import AddTask from "../Screens/Project/AddTask";
 import MainSignIn from "../Screens/Auth/MainSignIn";
 import Company from "../Screens/Company/Company";
+import CardsDataScreen from "../Screens/MyTasks/CardsData";
 
 
 
@@ -69,15 +70,15 @@ const StackNavigator = () => {
   const theme = useTheme();
 
   return (
-    <SafeAreaView style={{width:'100%', flex: 1 }}>
+    <SafeAreaView style={{ width: '100%', flex: 1 }}>
       {Platform.OS === 'android' &&
-        <StatusBar backgroundColor={theme.colors.card} barStyle={theme.dark ? "light-content" : "dark-content"} /> 
+        <StatusBar backgroundColor={theme.colors.card} barStyle={theme.dark ? "light-content" : "dark-content"} />
       }
       <Stack.Navigator
         initialRouteName={"splash"}
         screenOptions={{
           headerShown: false,
-          cardStyle: { backgroundColor: "transparent",flex:1  },
+          cardStyle: { backgroundColor: "transparent", flex: 1 },
           cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
         }}
       >
@@ -124,7 +125,7 @@ const StackNavigator = () => {
         <Stack.Screen name={"PayrollPeople"} component={PayrollPeople} />
         <Stack.Screen name={"SelectParty"} component={SelectParty} />
         <Stack.Screen name={"AddTask"} component={AddTask} />
-        
+
         <Stack.Screen name={"EditProfile"} component={EditProfile} />
         <Stack.Screen name={"Settings"} component={Settings} />
         <Stack.Screen name={"HelpCenter"} component={HelpCenter} />
@@ -134,6 +135,7 @@ const StackNavigator = () => {
         <Stack.Screen name={"LibraryManagement"} component={LibraryManagement} />
 
         <Stack.Screen name={"Notification"} component={Notification} />
+        <Stack.Screen name={"CardsData"} component={CardsDataScreen} />
 
       </Stack.Navigator>
     </SafeAreaView>

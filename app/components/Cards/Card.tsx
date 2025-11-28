@@ -18,7 +18,6 @@ type CardProps = {
     style?: ViewStyle;
     onPress?: () => void;
 
-    // optional styling overrides
     iconBgColor?: string;
     countColor?: string;
     titleColor?: string;
@@ -30,7 +29,7 @@ const hexToRgba = (hex: string, alpha: number) => {
         cleaned = cleaned
             .split("")
             .map((c) => c + c)
-            .join(""); // #abc -> #aabbcc
+            .join("");
     }
 
     const num = parseInt(cleaned, 16);
@@ -55,9 +54,9 @@ const Card: React.FC<CardProps> = ({
     const baseColor = iconBgColor || "#6C5CE7";
 
     const gradientColors = [
-        hexToRgba(baseColor, 0.18), // left side tint
-        hexToRgba(baseColor, 0.03), // soft middle
-        "transparent",              // fade out to plain white
+        hexToRgba(baseColor, 0.15),
+        hexToRgba(baseColor, 0.04),
+        "transparent",
     ];
 
     return (
@@ -65,7 +64,6 @@ const Card: React.FC<CardProps> = ({
             style={[styles.card, style]}
             {...(onPress ? { onPress, activeOpacity: 0.8 } : {})}
         >
-            {/* Gradient overlay inside the card (not the whole box background) */}
             <LinearGradient
                 colors={gradientColors}
                 start={{ x: 0, y: 0 }}
@@ -113,23 +111,23 @@ export default Card;
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 14,
-        backgroundColor: COLORS.card,      // plain white base
-        shadowColor: COLORS.black,
-        shadowOpacity: 0.05,
+        borderRadius: 16,
+        backgroundColor: COLORS.card || "#FFFFFF",
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
         shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 3 },
         elevation: 2,
         minWidth: 130,
         minHeight: 100,
-        overflow: "hidden",                // keep gradient inside rounded corners
+        overflow: "hidden",
     },
     contentRow: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingVertical: 12,
         flex: 1,
     },
     left: {
@@ -139,13 +137,13 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 10,
-        backgroundColor: "#6C5CE7", // default, overridden by iconBgColor
+        backgroundColor: "#6C5CE7",
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 4,
+        marginBottom: 6,
     },
     title: {
-        fontSize: 15,
+        fontSize: 14,
         color: COLORS.textPrimary,
     },
     right: {
@@ -153,7 +151,7 @@ const styles = StyleSheet.create({
         alignItems: "flex-end",
     },
     count: {
-        fontSize: 18,
+        fontSize: 22,
         fontWeight: "700",
         color: COLORS.textPrimary,
     },
