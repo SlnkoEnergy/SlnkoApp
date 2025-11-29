@@ -321,7 +321,7 @@ const CardsDataScreen: React.FC<Props> = ({ route, navigation }) => {
                 })}
             </View> */}
 
-            <TaskHeader title={title} isBack={true} />
+            <TaskHeader title={title} isBack={true} statusFilterOptions={statusFilterOptions} />
 
             {/* Content */}
             {isLoading && (

@@ -8,7 +8,7 @@ import {
   Animated,
   StyleSheet,
 } from 'react-native';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import { useNavigation, useTheme } from '@react-navigation/native';
@@ -136,28 +136,43 @@ type EstimatesScreenProps = StackScreenProps<RootStackParamList, 'Estimates'>;
 const Estimates = ({ navigation }: EstimatesScreenProps) => {
   const theme = useTheme();
   const { colors }: { colors: any } = theme;
- const drawerNavigation =
+  const drawerNavigation =
     useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const refRBSheet = useRef<any>(null);
 
   const [showSearch, setShowSearch] = useState(false);
   const translateX = useRef(new Animated.Value(-300)).current;
+  const searchAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
 
   const openSearchBar = () => {
     setShowSearch(true);
-    Animated.timing(translateX, {
+
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start();
+    })
+
+    searchAnimRef.current = anim;
+
+    anim.start();
   };
 
   const closeSearchBar = () => {
-    Animated.timing(translateX, {
-      toValue: 400, // Slide out to right
+
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
+      toValue: 400,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
+    })
+
+    searchAnimRef.current = anim;
+    anim.start(({ finished }) => {
       setShowSearch(false);
       translateX.setValue(-300); // RESET to left (prepare for next open)
     });
@@ -175,6 +190,12 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
       useNativeDriver: false,
     }).start();
   };
+
+  useEffect(() => {
+    return () => {
+      searchAnimRef.current?.stop();
+    };
+  }, []);
 
   const handleSelect = (value: string) => {
     setSelected(value);
@@ -204,7 +225,7 @@ const Estimates = ({ navigation }: EstimatesScreenProps) => {
           ]}
         >
           <TouchableOpacity
-             onPress={() => drawerNavigation.openDrawer()}
+            onPress={() => drawerNavigation.openDrawer()}
             style={{ flex: 1 }}
           >
             <Image

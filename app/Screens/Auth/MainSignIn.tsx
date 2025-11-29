@@ -31,13 +31,26 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { colors }: { colors: any } = theme;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+
   useEffect(() => {
-    Animated.timing(fadeAnim, {
+
+    const anim = Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 800,
       useNativeDriver: true,
-    }).start();
-  }, []);
+    })
+
+    animationRef.current = anim;
+
+    anim.start();
+
+    return () => {
+      animationRef.current?.stop();
+    }
+  }, [fadeAnim]);
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -59,92 +72,92 @@ const LoginScreen = ({ navigation }: LoginScreenProps) => {
   };
   const hideDialog = () => setDialogVisible(false);
 
-const handleLogin = async () => {
-  const user = name.trim();
-  const pass = password.trim();
+  const handleLogin = async () => {
+    const user = name.trim();
+    const pass = password.trim();
 
-  setInvalidCredentials(false);
+    setInvalidCredentials(false);
 
-  if (!user || !pass) {
-    showDialog("Missing Fields", "Please enter both username and password.");
-    return;
-  }
-  if (isLoading) return;
-
-  try {
-    Keyboard.dismiss();
-
-
-    const loginResponse = await login({ name: user, password: pass }).unwrap();
-    const { token, userId } = loginResponse ?? {};
-
-    if (!token || !userId) {
-      showDialog("Error", "Token or userId not received from server.");
+    if (!user || !pass) {
+      showDialog("Missing Fields", "Please enter both username and password.");
       return;
     }
+    if (isLoading) return;
 
-    await AsyncStorage.setItem("authToken", token);
+    try {
+      Keyboard.dismiss();
 
-    const users = await dispatch(
-      loginSlice.endpoints.getAllUsersIt.initiate()
-    ).unwrap();
 
-    const matchedUser = users.find(
-      (item: any) => String(item._id) === String(userId)
-    );
+      const loginResponse = await login({ name: user, password: pass }).unwrap();
+      const { token, userId } = loginResponse ?? {};
 
-    if (!matchedUser) {
-      showDialog("Error", "User not found in user list.");
-      return;
+      if (!token || !userId) {
+        showDialog("Error", "Token or userId not received from server.");
+        return;
+      }
+
+      await AsyncStorage.setItem("authToken", token);
+
+      const users = await dispatch(
+        loginSlice.endpoints.getAllUsersIt.initiate()
+      ).unwrap();
+
+      const matchedUser = users.find(
+        (item: any) => String(item._id) === String(userId)
+      );
+
+      if (!matchedUser) {
+        showDialog("Error", "User not found in user list.");
+        return;
+      }
+
+      await AsyncStorage.setItem(
+        "userData",
+        JSON.stringify({
+          name: matchedUser.name,
+          email: matchedUser.email,
+          phone: matchedUser.phone,
+          emp_id: matchedUser.emp_id,
+          role: matchedUser.role,
+          createdAt: matchedUser.createdAt,
+          userID: matchedUser._id,
+          about: matchedUser.about,
+          location: matchedUser.location,
+          attachment_url: matchedUser.attachment_url,
+        })
+      );
+
+      setPassword("");
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: "DrawerNavigation" as never,
+            params: {
+              screen: "BottomNavigation",
+              params: {
+                screen: "Project",
+              },
+            } as never,
+          },
+        ],
+      });
+
+    } catch (err: any) {
+      const is401 = err?.status === 401 || err?.originalStatus === 401;
+
+      if (is401) {
+        setInvalidCredentials(true);
+      }
+
+      const msg = is401
+        ? "Incorrect username or password."
+        : "Unable to sign in. Check your connection and try again.";
+
+      showDialog("Login Failed", msg);
     }
-
-    await AsyncStorage.setItem(
-      "userData",
-      JSON.stringify({
-        name: matchedUser.name,
-        email: matchedUser.email,
-        phone: matchedUser.phone,
-        emp_id: matchedUser.emp_id,
-        role: matchedUser.role,
-        createdAt: matchedUser.createdAt,
-        userID: matchedUser._id,
-        about: matchedUser.about,
-        location: matchedUser.location,
-        attachment_url: matchedUser.attachment_url,
-      })
-    );
-
-    setPassword("");
-
-   navigation.reset({
-  index: 0,
-  routes: [
-    {
-      name: "DrawerNavigation" as never,
-      params: {
-        screen: "BottomNavigation",
-        params: {
-          screen: "Project",
-        },
-      } as never,
-    },
-  ],
-});
-
-  } catch (err: any) {
-    const is401 = err?.status === 401 || err?.originalStatus === 401;
-
-    if (is401) {
-      setInvalidCredentials(true);
-    }
-
-    const msg = is401
-      ? "Incorrect username or password."
-      : "Unable to sign in. Check your connection and try again.";
-
-    showDialog("Login Failed", msg);
-  }
-};
+  };
 
 
   return (
@@ -180,7 +193,7 @@ const handleLogin = async () => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="next"
-                onSubmitEditing={() => {}}
+                onSubmitEditing={() => { }}
                 textContentType="username"
               />
             </View>
@@ -216,19 +229,19 @@ const handleLogin = async () => {
               </TouchableOpacity>
             </View>
 
-         {invalidCredentials && (
-  <Text
-    style={{
-      color: "#D32F2F",
-      fontSize: 12,
-      marginTop: 6,
-      marginBottom: 4,
-      alignSelf: "flex-start",
-    }}
-  >
-    Invalid username or password. Please try again.
-  </Text>
-)}
+            {invalidCredentials && (
+              <Text
+                style={{
+                  color: "#D32F2F",
+                  fontSize: 12,
+                  marginTop: 6,
+                  marginBottom: 4,
+                  alignSelf: "flex-start",
+                }}
+              >
+                Invalid username or password. Please try again.
+              </Text>
+            )}
 
 
             {/* Login Button */}
@@ -279,7 +292,7 @@ const handleLogin = async () => {
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
-    
+
   );
 };
 

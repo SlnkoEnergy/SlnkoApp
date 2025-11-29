@@ -21,6 +21,8 @@ type CardProps = {
     iconBgColor?: string;
     countColor?: string;
     titleColor?: string;
+    cardWidth?: number;
+    cardHeight?: number;
 };
 
 const hexToRgba = (hex: string, alpha: number) => {
@@ -49,6 +51,8 @@ const Card: React.FC<CardProps> = ({
     iconBgColor,
     countColor,
     titleColor,
+    cardHeight,
+    cardWidth,
 }) => {
     const Wrapper: any = onPress ? TouchableOpacity : View;
     const baseColor = iconBgColor || "#6C5CE7";
@@ -61,7 +65,12 @@ const Card: React.FC<CardProps> = ({
 
     return (
         <Wrapper
-            style={[styles.card, style]}
+            style={[
+                styles.card,
+                cardWidth ? { minWidth: cardWidth } : null,
+                cardHeight ? { minHeight: cardHeight } : null,
+                style,
+            ]}
             {...(onPress ? { onPress, activeOpacity: 0.8 } : {})}
         >
             <LinearGradient
@@ -118,8 +127,6 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
         elevation: 2,
-        minWidth: 130,
-        minHeight: 100,
         overflow: "hidden",
     },
     contentRow: {

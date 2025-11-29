@@ -1,5 +1,5 @@
 import { View, Text, SafeAreaView, StatusBar, ScrollView, TouchableOpacity, Image, Platform, ImageBackground, Animated, StyleSheet } from 'react-native'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../../Navigations/RootStackParamList';
 import { useTheme } from '@react-navigation/native';
@@ -70,21 +70,36 @@ const Contacts = ({ navigation }: ContactsScreenProps) => {
   const [showSearch, setShowSearch] = useState(false);
   const translateX = useRef(new Animated.Value(-300)).current;
 
+  const searchAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
   const openSearchBar = () => {
     setShowSearch(true);
-    Animated.timing(translateX, {
+
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start();
+    })
+
+    searchAnimRef.current = anim;
+
+    anim.start();
   };
 
   const closeSearchBar = () => {
-    Animated.timing(translateX, {
-      toValue: 400, // Slide out to right
+
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
+      toValue: 400,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
+    })
+
+    searchAnimRef.current = anim;
+    anim.start(({ finished }) => {
       setShowSearch(false);
       translateX.setValue(-300); // RESET to left (prepare for next open)
     });
@@ -102,6 +117,12 @@ const Contacts = ({ navigation }: ContactsScreenProps) => {
       useNativeDriver: false,
     }).start();
   };
+
+  useEffect(() => {
+    return () => {
+      searchAnimRef.current?.stop();
+    };
+  }, []);
 
   const handleSelect = (value: string) => {
     setSelected(value);
@@ -194,7 +215,7 @@ const Contacts = ({ navigation }: ContactsScreenProps) => {
 
           {/* New link */}
           <TouchableOpacity style={styles.newRow} activeOpacity={0.8}>
-            <Ionicons name="add-circle" size={18} color = {COLORS.primary} />
+            <Ionicons name="add-circle" size={18} color={COLORS.primary} />
             <Text style={styles.newText}>New</Text>
           </TouchableOpacity>
 
@@ -202,7 +223,7 @@ const Contacts = ({ navigation }: ContactsScreenProps) => {
           <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
             <Text style={styles.sectionHeader}>Sat, Nov 29</Text>
             <TouchableOpacity>
-              <Ionicons name="add" size={22} color = {COLORS.primary} />
+              <Ionicons name="add" size={22} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
 
@@ -225,7 +246,7 @@ const Contacts = ({ navigation }: ContactsScreenProps) => {
           <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
             <Text style={styles.sectionHeader}>Sun, Nov 30</Text>
             <TouchableOpacity>
-              <Ionicons name="add" size={22} color = {COLORS.primary} />
+              <Ionicons name="add" size={22} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
         </ScrollView>

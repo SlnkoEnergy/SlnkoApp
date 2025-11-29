@@ -77,38 +77,65 @@ const Project = ({ navigation }: ProjectScreenProps) => {
     );
   }, []);
 
+  // 🔹 Search bar animation state
   const [showSearch, setShowSearch] = useState(false);
   const translateX = useRef(new Animated.Value(-300)).current;
+  const searchAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const openSearchBar = () => {
+    if (showSearch) return;
+
     setShowSearch(true);
-    Animated.timing(translateX, {
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
-    }).start();
+    });
+
+    searchAnimRef.current = anim;
+    anim.start();
   };
+
   const closeSearchBar = () => {
-    Animated.timing(translateX, {
+    if (!showSearch) return;
+
+    searchAnimRef.current?.stop();
+
+    const anim = Animated.timing(translateX, {
       toValue: 400,
       duration: 300,
       useNativeDriver: true,
-    }).start(() => {
-      setShowSearch(false);
-      translateX.setValue(-300);
+    });
+
+    searchAnimRef.current = anim;
+    anim.start(({ finished }) => {
+      if (finished) {
+        setShowSearch(false);
+        translateX.setValue(-300);
+      }
     });
   };
 
+  useEffect(() => {
+    return () => {
+      // cleanup on unmount
+      searchAnimRef.current?.stop();
+    };
+  }, []);
+
+  // 🔹 Status dropdown
   const [selected, setSelected] = useState('All');
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
 
   const toggleDropdown = () => {
-    setIsOpen(!isOpen);
+    setIsOpen((prev) => !prev);
     Animated.timing(animation, {
       toValue: isOpen ? 0 : 1,
       duration: 200,
-      useNativeDriver: false,
+      useNativeDriver: false, // height cannot use native driver
     }).start();
   };
 
@@ -127,6 +154,7 @@ const Project = ({ navigation }: ProjectScreenProps) => {
     limit: 20,
   });
 
+  // 🔹 Scroll animation for chip row
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const chipRowScaleY = scrollY.interpolate({
@@ -244,41 +272,42 @@ const Project = ({ navigation }: ProjectScreenProps) => {
     const cover = data?.images?.[0];
 
     const progressAnim = useRef(new Animated.Value(0)).current;
-    const chipScale = useRef(new Animated.Value(0.9)).current;
-    const chipOpacity = useRef(new Animated.Value(0.0)).current;
+    const chipScaleInner = useRef(new Animated.Value(0.9)).current;
+    const chipOpacityInner = useRef(new Animated.Value(0.0)).current;
 
     useEffect(() => {
       const to =
         typeof data?.progress === 'number'
           ? Math.max(0, Math.min(1, data.progress))
           : 0;
+
       Animated.parallel([
         Animated.timing(progressAnim, {
           toValue: to,
           duration: 600,
-          useNativeDriver: false,
+          useNativeDriver: false, // driving width -> layout
         }),
         Animated.sequence([
           Animated.parallel([
-            Animated.timing(chipOpacity, {
+            Animated.timing(chipOpacityInner, {
               toValue: 1,
               duration: 180,
               useNativeDriver: true,
             }),
-            Animated.timing(chipScale, {
+            Animated.timing(chipScaleInner, {
               toValue: 1.03,
               duration: 180,
               useNativeDriver: true,
             }),
           ]),
-          Animated.timing(chipScale, {
+          Animated.timing(chipScaleInner, {
             toValue: 1,
             duration: 140,
             useNativeDriver: true,
           }),
         ]),
       ]).start();
-    }, [data?.progress, progressAnim, chipScale, chipOpacity]);
+    }, [data?.progress, progressAnim, chipScaleInner, chipOpacityInner]);
 
     const barWidth = progressAnim.interpolate({
       inputRange: [0, 1],
@@ -379,8 +408,8 @@ const Project = ({ navigation }: ProjectScreenProps) => {
                   position: 'absolute',
                   right: 12,
                   bottom: 20,
-                  transform: [{ scale: chipScale }],
-                  opacity: chipOpacity,
+                  transform: [{ scale: chipScaleInner }],
+                  opacity: chipOpacityInner,
                 },
               ]}
             >
@@ -422,66 +451,68 @@ const Project = ({ navigation }: ProjectScreenProps) => {
     );
   };
 
+  // 🔹 Recent tasks helpers
+  type StatusKey =
+    | 'idle'
+    | 'pending'
+    | 'work stopped'
+    | 'completed'
+    | 'in progress';
 
-type StatusKey = 'idle' | 'pending' | 'work stopped' | 'completed' | 'in progress';
+  const normalizeStatusFromBackend = (raw?: string | null): StatusKey => {
+    if (!raw) return 'idle';
+    const s = raw.toLowerCase().trim();
 
-const normalizeStatusFromBackend = (raw?: string | null): StatusKey => {
-  if (!raw) return "idle";
-  const s = raw.toLowerCase().trim();
-
-  switch (s) {
-    case "pending":
-      return "pending";
-    case "idle":
-    case "ideal":
-      return "idle";
-    case "work stopped":
-    case "work_stopped":
-      return "work stopped";
-    case "completed":
-    case "complete":
-      return "completed";
-    case "in progress":
-    case "in-progress":
-    case "in_progress":
-      return "in progress";
-    default:
-      return "in progress";
-  }
-};
-
-const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
-  // same progress logic as cards
-  let progress = 0;
-  if (typeof t?.percent_complete === "number") {
-    progress = Math.max(0, Math.min(1, t.percent_complete / 100));
-  } else if (t?.work_completion?.unit === "percentage") {
-    const v = Number(t?.work_completion?.value ?? 0);
-    progress = Math.max(0, Math.min(1, v / 100));
-  }
-
-  const title = (t?.activity_id?.name || t?.activity_id) ?? "Activity";
-  const code = t?.project_id?.code || "";
-
-  const cardData = {
-    title,
-    code,
-    progress,
-    view: "grid",
-    images: [IMAGE],
-    _raw: t,
+    switch (s) {
+      case 'pending':
+        return 'pending';
+      case 'idle':
+      case 'ideal':
+        return 'idle';
+      case 'work stopped':
+      case 'work_stopped':
+        return 'work stopped';
+      case 'completed':
+      case 'complete':
+        return 'completed';
+      case 'in progress':
+      case 'in-progress':
+      case 'in_progress':
+        return 'in progress';
+      default:
+        return 'in progress';
+    }
   };
 
-  return {
-    id: t._id,
-    title,
-    updatedAt: t.updatedAt,
-    status: normalizeStatusFromBackend(t?.current_status?.status),
-    companyPayload: cardData,                        
-  };
-});
+  const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
+    let progress = 0;
+    if (typeof t?.percent_complete === 'number') {
+      progress = Math.max(0, Math.min(1, t.percent_complete / 100));
+    } else if (t?.work_completion?.unit === 'percentage') {
+      const v = Number(t?.work_completion?.value ?? 0);
+      progress = Math.max(0, Math.min(1, v / 100));
+    }
 
+    const title = (t?.activity_id?.name || t?.activity_id) ?? 'Activity';
+    const code = t?.project_id?.code || '';
 
+    const cardData = {
+      title,
+      code,
+      progress,
+      view: 'grid',
+      images: [IMAGE],
+      _raw: t,
+    };
+
+    return {
+      id: t._id,
+      title,
+      updatedAt: t.updatedAt,
+      status: normalizeStatusFromBackend(t?.current_status?.status),
+      companyPayload: cardData,
+    };
+  });
 
   return (
     <SafeAreaView
@@ -489,7 +520,6 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
     >
       <StatusBar backgroundColor={colors.background} />
 
-      {/* ✅ make this container flex: 1 so scroll gets space */}
       <View style={[GlobalStyleSheet.container, { padding: 0, flex: 1 }]}>
         {/* Top app bar */}
         <View
@@ -547,12 +577,12 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* ✅ Scrollable content */}
+        {/* Scrollable content */}
         <Animated.ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingBottom: 140, // extra space for floating bottom tab
+            paddingBottom: 140,
           }}
           scrollEventThrottle={16}
           onScroll={Animated.event(
@@ -629,7 +659,9 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
                               borderRadius: 4,
                               backgroundColor: colors.text,
                             },
-                            item === 'Ongoing' && { backgroundColor: '#419A90' },
+                            item === 'Ongoing' && {
+                              backgroundColor: '#419A90',
+                            },
                             item === 'Completed' && {
                               backgroundColor: '#6A38FF',
                             },
@@ -661,11 +693,7 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
               </View>
 
               <TouchableOpacity onPress={openSearchBar} activeOpacity={0.5}>
-                <FeatherIcon
-                  color={COLORS.primary}
-                  size={16}
-                  name="search"
-                />
+                <FeatherIcon color={COLORS.primary} size={16} name="search" />
               </TouchableOpacity>
             </View>
 
@@ -796,14 +824,12 @@ const recentData: RecentTask[] = (apiRes?.data ?? []).map((t: any) => {
 
           {/* Recents */}
           <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
-      <RecentTasks
-  tasks={recentData}
-  onPressTask={(t) =>
-    navigation.navigate("Company", { data: t.companyPayload })
-  }
-/>
-
-
+            <RecentTasks
+              tasks={recentData}
+              onPressTask={(t) =>
+                navigation.navigate('Company', { data: t.companyPayload })
+              }
+            />
           </View>
 
           {/* Direct messages */}

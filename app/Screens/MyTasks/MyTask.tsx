@@ -1,5 +1,5 @@
 // Screens/MyTasks/MyTask.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -25,6 +25,10 @@ type MyTaskNavigationProp = StackNavigationProp<
 const MyTask = () => {
   const { data, isLoading, isError } = useGetAllDprStatusQuery();
   const navigation = useNavigation<MyTaskNavigationProp>();
+
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
+
 
   const stats = data?.data || {
     today: 0,
@@ -106,26 +110,27 @@ const MyTask = () => {
         )}
 
         {!isLoading && !isError && (
-          <View style={styles.gridWrapper}>
-            <View style={styles.grid}>
-              {items.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.cardSpacing}
-                  activeOpacity={0.85}
-                  onPress={() => handleCardPress(item)}
-                >
-                  <Card
-                    title={item.title}
-                    count={item.count}
-                    icon={<Icon name={item.iconName} size={18} color="#fff" />}
-                    iconBgColor={item.iconBg}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.gridContainer}>
+            {items.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.cardSpacing}
+                activeOpacity={0.85}
+                onPress={() => handleCardPress(item)}
+              >
+                <Card
+                  title={item.title}
+                  count={item.count}
+                  icon={<Icon name={item.iconName} size={18} color="#fff" />}
+                  iconBgColor={item.iconBg}
+                  cardHeight={120}
+                  cardWidth={380}
+                />
+              </TouchableOpacity>
+            ))}
           </View>
         )}
+
 
         <View style={styles.listDivider} />
       </ScrollView>
@@ -149,24 +154,19 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingHorizontal: 16,
   },
-  grid: {
-    flexDirection: "row",
+
+  gridContainer: {
+    flexDirection: "column",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    borderRadius: 20,
-    backgroundColor: COLORS.card || "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    paddingHorizontal: 16,
+    marginTop: 12,
   },
   cardSpacing: {
-    width: "48%",
+    width: "48%",   // two cards per row
     marginBottom: 14,
   },
+
   listDivider: {
     height: 1,
     backgroundColor: COLORS.borderColor,
