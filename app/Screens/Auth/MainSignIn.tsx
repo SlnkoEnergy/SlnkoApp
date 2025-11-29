@@ -124,7 +124,7 @@ const handleLogin = async () => {
       params: {
         screen: "BottomNavigation",
         params: {
-          screen: "Project",
+          screen: "Settings",
         },
       } as never,
     },
@@ -132,17 +132,8 @@ const handleLogin = async () => {
 });
 
   } catch (err: any) {
-    const is401 = err?.status === 401 || err?.originalStatus === 401;
-
-    if (is401) {
-      setInvalidCredentials(true);
-    }
-
-    const msg = is401
-      ? "Incorrect username or password."
-      : "Unable to sign in. Check your connection and try again.";
-
-    showDialog("Login Failed", msg);
+  
+    showDialog("Login Failed", err);
   }
 };
 

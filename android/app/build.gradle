@@ -125,6 +125,7 @@ buildTypes {
 
 dependencies {
     implementation("com.facebook.react:react-android")
+     implementation "androidx.activity:activity-ktx:1.9.3"
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
